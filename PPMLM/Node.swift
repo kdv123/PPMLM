@@ -12,10 +12,10 @@
 class Node: CustomStringConvertible
 {
     // Node containing the linked list that has symbols extending this node by one more symbol.
-    private var child: Node?
+    var child: Node?
     
     // Next node in the linked list for seen symbols after our current Node's context.
-    private var next: Node?
+    private(set) var next: Node?
 
     // Node in the backoff structure, also known as "vine" structure (see [1]
     // above) and "suffix link" (see [2] above). The backoff for the given node
@@ -27,16 +27,36 @@ class Node: CustomStringConvertible
     // need to be. For example, for the node "B" in the trie path for the string
     // "AB" ("[R] -> [A] -> [*B*]") the backoff points at the child node of a
     // different path "[R] -> [*B*]".
-    private var backoff: Node?
+    private(set) var backoff: Node?
     
     // Frequency count for this node. Number of times the suffix symbol stored
     // in this node was observed.
-    private var count: Int = 0
+    private(set) var count: Int = 1
 
     // Symbol that this node stores.
-    private var symbol: Int = Constants.ROOT_ID
+    private(set) var symbol: Int = Constants.ROOT_SYMBOL
+    
+    // Constructor for the default root Node
+    init()
+    {
+    }
+    
+    // Contruct for a given symbol and possible pointers to other Nodes.
+    init(symbol: Int, next: Node?, backoff: Node?)
+    {
+        self.symbol = symbol
+        self.next = next
+        self.backoff = backoff
+    }
+
+    // Add one to the count of this Node.
+    func incrementCount()
+    {
+        count += 1
+    }
     
     // Finds child of the current node with a specified symbol.
+    // Returns the Node object that matches the symbol if any.
     func findChildWith(symbol: Int) -> Node?
     {
         var current = child

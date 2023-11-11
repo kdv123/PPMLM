@@ -1,24 +1,27 @@
 // Stores symbols and maps them to contiguous integer IDs
+// We use the following terms:
+//   token  - A string token in the language model (often a single character)
+//   symbol - Numeric integer ID for a token
 
 class Vocabulary: CustomStringConvertible
 {
     // Use a dictionary to convert strings quickly to numeric IDs.
     // Start with a single entry for the root node.
-    private var symbolToID = [Constants.ROOT_NAME: Constants.ROOT_ID]
+    private var tokenToSymbol = [Constants.ROOT_TOKEN: Constants.ROOT_SYMBOL]
     
     // Adds symbol to the vocabulary and returns its unique ID
     func add(symbol: String) -> Int
     {
-        if let ID = symbolToID[symbol]
+        if let symbol = tokenToSymbol[symbol]
         {
             // Already exists in the dictionary.
-            return ID
+            return symbol
         }
         else
         {
             // Add to dictionary with ID based on current size of vocab.
-            let result: Int = symbolToID.count
-            symbolToID[symbol] = result
+            let result: Int = tokenToSymbol.count
+            tokenToSymbol[symbol] = result
             return result
         }
     }
@@ -26,13 +29,13 @@ class Vocabulary: CustomStringConvertible
     // Find out how many symbols are in this vocabulary
     var size: Int
     {
-        return symbolToID.count
+        return tokenToSymbol.count
     }
     
     // Provide a friendly string version of this instance
     var description: String
     {
-        return "Vocabulary (count \(symbolToID.count) \(symbolToID))"
+        return "Vocabulary (count \(tokenToSymbol.count) \(tokenToSymbol))"
     }
     
 }
