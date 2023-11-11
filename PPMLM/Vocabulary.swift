@@ -2,8 +2,8 @@
 
 class Vocabulary: CustomStringConvertible
 {
-    // Use a dictionary to convert strings quickly to numeric IDs
-    // Start with a single entry for the root node
+    // Use a dictionary to convert strings quickly to numeric IDs.
+    // Start with a single entry for the root node.
     private var symbolToID = [Constants.ROOT_NAME: Constants.ROOT_ID]
     
     // Adds symbol to the vocabulary and returns its unique ID
@@ -11,13 +11,13 @@ class Vocabulary: CustomStringConvertible
     {
         if let ID = symbolToID[symbol]
         {
-            // Already exists in the dictionary
+            // Already exists in the dictionary.
             return ID
         }
         else
         {
-            // Add to dictionary with ID based on current size of vocab
-            var result: Int = symbolToID.count
+            // Add to dictionary with ID based on current size of vocab.
+            let result: Int = symbolToID.count
             symbolToID[symbol] = result
             return result
         }
@@ -32,7 +32,7 @@ class Vocabulary: CustomStringConvertible
     // Provide a friendly string version of this instance
     var description: String
     {
-        return "Vocabulary [count \(symbolToID.count)]"
+        return "Vocabulary (count \(symbolToID.count) \(symbolToID))"
     }
     
 }

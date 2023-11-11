@@ -14,6 +14,6 @@ class Context: CustomStringConvertible
     
     var description: String 
     {
-        return "Context [order \(order) head \(head)]"
+        return "Context (order \(order) head \(head))"
     }
 }
