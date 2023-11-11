@@ -2,19 +2,22 @@
 
 import Foundation
 
-var c = Context(order: 1, head: Node())
-print("\(c)")
 //print(malloc_size(Unmanaged.passRetained(c).toOpaque()))
 //print(class_getInstanceSize(type(of: c)))
 
 var v = Vocabulary()
-print("\(v)")
+let aSymbol = v.add(symbol: "a")
+let bSymbol = v.add(symbol: "b")
+let cSymbol = v.add(symbol: "c")
 
-let aID = v.add(symbol: "a")
-print("\(v)")
+let maxOrder = 5
+let lm = PPMLanguageModel(vocab: v, maxOrder: maxOrder)
+let c = lm.createEmptyContext()
 
-let bID = v.add(symbol: "b")
-print("\(v)")
+lm.addAndUpdate(symbol: aSymbol, toContext: c)
+lm.addAndUpdate(symbol: bSymbol, toContext: c)
+lm.addAndUpdate(symbol: cSymbol, toContext: c)
 
-
-print("a \(aID) b \(bID)")
+print("lm \(lm)")
+print("c \(c)")
+lm.printTree()

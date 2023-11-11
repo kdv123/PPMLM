@@ -5,8 +5,8 @@ class PPMLanguageModel: CustomStringConvertible
     private let vocab: Vocabulary
     private let root: Node
     private let rootContext: Context
-    private let maxOrder: Int
-    private var numNodes: Int
+    private(set) var maxOrder: Int
+    private(set) var numNodes: Int
     var useExclusion: Bool = false
     
     init(vocab: Vocabulary, maxOrder: Int)
@@ -120,7 +120,7 @@ class PPMLanguageModel: CustomStringConvertible
         assert(symbol < vocab.size, "Invalid symbol: \(symbol)")
         
         let symbolNode = add(symbol: symbol, toNode: toContext.head)
-        // TODO: Is this needed?
+        // TODO: Is this needed? Seems like it might slow things down.
         assert(symbolNode === toContext.head.findChildWith(symbol: symbol), "failed to find added child")
 
         toContext.head = symbolNode
@@ -140,10 +140,29 @@ class PPMLanguageModel: CustomStringConvertible
             }
         }
     }
+ 
+    // Helper function for printing out the suffix tree.
+    private func printTree(node: Node, indent: String)
+    {
+        print("\(indent)\(node)")
+        let indentMore = indent + "  "
+        
+        while let child = node.child
+        {
+            printTree(node: child, indent: indentMore)
+            node.child = child.next
+        }
+    }
+
+    // Print out the suffix tree showing all the nodes.
+    func printTree()
+    {
+        printTree(node: root, indent: "")
+    }
     
     // Provide a friendly string version of this instance.
     var description: String
     {
-        return "(PPMLanguageModel)"
+        return "(PPMLanguageModel numNodes \(numNodes) maxOrder \(maxOrder) useExclusion \(useExclusion))"
     }
 }
