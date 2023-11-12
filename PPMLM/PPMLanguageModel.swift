@@ -75,11 +75,12 @@ class PPMLanguageModel: CustomStringConvertible
     func addSymbolToContext(context: Context, symbol: Int)
     {
         // Only add valid symbols.
-        if symbol <= Constants.ROOT_SYMBOL
+        if symbol >= vocab.size || symbol < Constants.ROOT_SYMBOL
         {
+            // Crash in debug, just return in release.
+            assert(symbol < vocab.size && symbol >= Constants.ROOT_SYMBOL, "Invalid symbol: \(symbol)")
             return
         }
-        assert(symbol < vocab.size, "Invalid symbol: \(symbol)")
 
         // Loop will be modifying the non-optional head of context.
         // So we'll just loop until we either extend an existing context
@@ -116,8 +117,13 @@ class PPMLanguageModel: CustomStringConvertible
     func addSymbolAndUpdate(context: Context, symbol: Int)
     {
         // Only add valid symbols.
-        assert(symbol < vocab.size && symbol >= Constants.ROOT_SYMBOL, "Invalid symbol: \(symbol)")
-        
+        if symbol >= vocab.size || symbol < Constants.ROOT_SYMBOL
+        {
+            // Crash in debug, just return in release.
+            assert(symbol < vocab.size && symbol >= Constants.ROOT_SYMBOL, "Invalid symbol: \(symbol)")
+            return
+        }
+                
         let symbolNode = add(symbol: symbol, toNode: context.head)
         assert(symbolNode === context.head.findChildWith(symbol: symbol), "failed to find added child")
 
