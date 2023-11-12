@@ -12,7 +12,8 @@ class Context: CustomStringConvertible
         self.head = head
     }
     
-    var description: String 
+    // Provide a friendly string version of this instance.
+    var description: String
     {
         return "Context (order \(order) head \(String(describing: head)))"
     }

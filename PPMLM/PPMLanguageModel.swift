@@ -81,6 +81,9 @@ class PPMLanguageModel: CustomStringConvertible
         }
         assert(symbol < vocab.size, "Invalid symbol: \(symbol)")
 
+        // Loop will be modifying the non-optional head of context.
+        // So we'll just loop until we either extend an existing context
+        // or give up and go all the way back to the root.
         while true
         {
             if context.order < maxOrder
@@ -102,26 +105,20 @@ class PPMLanguageModel: CustomStringConvertible
             }
             else
             {
-                break
+                context.head = root
+                context.order = 0
+                return
             }
         }
-        // TODO: Is this correct without the if? line 267 in pppm_language_model.js
-        context.head = root
-        context.order = 0
     }
 
     // Adds symbol to the supplied context and update the model.
     func addSymbolAndUpdate(context: Context, symbol: Int)
     {
         // Only add valid symbols.
-        if symbol <= Constants.ROOT_SYMBOL
-        {
-            return
-        }
-        assert(symbol < vocab.size, "Invalid symbol: \(symbol)")
+        assert(symbol < vocab.size && symbol >= Constants.ROOT_SYMBOL, "Invalid symbol: \(symbol)")
         
         let symbolNode = add(symbol: symbol, toNode: context.head)
-        // TODO: Is this needed? Seems like it might slow things down.
         assert(symbolNode === context.head.findChildWith(symbol: symbol), "failed to find added child")
 
         context.head = symbolNode
@@ -201,14 +198,18 @@ class PPMLanguageModel: CustomStringConvertible
         // performance on smaller sets (as we observed with default Dasher English
         // training data).
         var totalMass = 1.0;
-        var node = context.head
         var gamma = totalMass
-        while true
+
+        // Since Context's head is non-optional, but we want to loop until this
+        // helper variable node becomes nil, we need to make it into an optional.
+        var node: Node? = context.head
+
+        while let nodeUnwrapped = node
         {
-            let count = node.totalChildrenCounts(exclusionMask: exclusionMask)
+            let count = nodeUnwrapped.totalChildrenCounts(exclusionMask: exclusionMask)
             if count > 0
             {
-                var childNode = node.child
+                var childNode = nodeUnwrapped.child
                 while let childNodeUnwrapped = childNode
                 {
                     let symbol = childNodeUnwrapped.symbol
@@ -254,15 +255,8 @@ class PPMLanguageModel: CustomStringConvertible
             //
             // Since gamma *= (numChildren * knBeta + knAlpha) / (count + knAlpha) is
             // expensive, we assign the equivalent totalMass value to gamma.
+            node = nodeUnwrapped.backoff
             gamma = totalMass
-            if let backoff = node.backoff
-            {
-                node = backoff
-            }
-            else
-            {
-                break
-            }
         }
         assert(totalMass >= 0.0, "Invalid remaining probability mass: \(totalMass)")
         
@@ -273,26 +267,17 @@ class PPMLanguageModel: CustomStringConvertible
         // training, otherwise, this number will be equal to total number of
         // symbols because we always interpolate with the estimates for an empty
         // context.
-        // TODO: Should be able to just calculate this from vocab/set size
-        var numUnseenSymbols = 0
-        for i in 1..<vocab.size
-        {
-            if (!useExclusion || !exclusionMask.contains(i))
-            {
-                numUnseenSymbols += 1
-            }
-        }
-        
+        let numUnseenSymbols = useExclusion ? exclusionMask.count : vocab.size - 1
+                
         // Adjust the probability mass for all the symbols.
-        // TODO: Silly to calculate inside the loop for a constant
-        let remainingMass = totalMass
+        let p = totalMass / Double(numUnseenSymbols)
         for i in 1..<vocab.size
         {
             // Following is estimated according to a uniform distribution
             // corresponding to the context length of zero.
             if !useExclusion || !exclusionMask.contains(i)
             {
-                let p = remainingMass / Double(numUnseenSymbols)
+                
                 probs[i] += p
                 totalMass -= p
             }
@@ -310,14 +295,16 @@ class PPMLanguageModel: CustomStringConvertible
         }
         
         assert(totalMass == 0.0, "Expected remaining probability mass to be zero!")
-        assert(abs(1.0 - newProbMass) < Constants.EPSILON, "Leftover mass!")
+        assert(abs(1.0 - newProbMass) < Constants.EPSILON, "Leftover mass is too big!")
         
         return probs
     }
     
     // Helper function for printing out the suffix tree.
-    private func printTree(node: Node, indent: String)
+    // Returns count of printed nodes (sanity check).
+    private func printTree(node: Node, indent: String) -> Int
     {
+        var result = 1
         print("\(indent)\(node)")
         let indentMore = indent + "  "
         
@@ -325,15 +312,17 @@ class PPMLanguageModel: CustomStringConvertible
         
         while let currentUnwrapped = current
         {
-            printTree(node: currentUnwrapped, indent: indentMore)
+            result += printTree(node: currentUnwrapped, indent: indentMore)
             current = currentUnwrapped.next
         }
+        return result
     }
 
     // Print out the suffix tree showing all the nodes.
     func printTree()
     {
-        printTree(node: root, indent: "")
+        let count = printTree(node: root, indent: "")
+        assert(count == numNodes, "Printed number of nodes does not match class counter!")
     }
     
     // Provide a friendly string version of this instance.
