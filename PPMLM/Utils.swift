@@ -1,4 +1,7 @@
-// Home for static helper functions
+// Home for static helper functions.
+// Also extensions to built-in types.
+
+import Foundation
 
 class Utils
 {
@@ -22,4 +25,31 @@ class Utils
         return true
     }
     
+}
+
+extension String 
+{
+    // Collapse consecutive whitespace into a single space.
+    func condenseWhitespace() -> String
+    {
+        let components = self.components(separatedBy: .whitespacesAndNewlines)
+        return components.filter { !$0.isEmpty }.joined(separator: " ")
+    }
+    
+    // Remove leading and trailing whitespace.
+    func trimmingLeadingAndTrailingSpaces(using characterSet: CharacterSet = .whitespacesAndNewlines) -> String
+    {
+        return trimmingCharacters(in: characterSet)
+    }
+    
+    // Compute the number of unique characters.
+    func numUniqueCharacters() -> Int
+    {
+        var seen = Set<Character>()
+        for ch in self
+        {
+            seen.insert(ch)
+        }
+        return seen.count
+    }
 }

@@ -329,11 +329,42 @@ class PPMLanguageModel: CustomStringConvertible
     {
         let count = printTree(node: root, indent: "")
         assert(count == numNodes, "Printed number of nodes does not match class counter!")
+        print("Total nodes including root: \(count)")
     }
     
     // Provide a friendly string version of this instance.
     var description: String
     {
         return "(PPMLanguageModel numNodes \(numNodes) maxOrder \(maxOrder) useExclusion \(useExclusion))"
+    }
+    
+    // Use the given line of text to update counts in the language model.
+    // This assumes:
+    //   1) Training starts at the root context.
+    //   2) Tokens not in the vocabulary are skipped over.
+    //
+    // Returns number of skipped tokens.
+    func train(text: String) -> Int
+    {
+        var skipped = 0
+                    
+        // Start at the root context.
+        var c = createContext()
+        
+        // Loop over each character in the string.
+        for ch in text
+        {
+            let symbol = vocab.getSymbol(ofToken: String(ch))
+            if let symbol = symbol
+            {
+                addSymbolAndUpdate(context: c, symbol: symbol)
+            }
+            else
+            {
+                skipped += 1
+            }
+        }
+        
+        return skipped
     }
 }
