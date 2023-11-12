@@ -52,4 +52,22 @@ extension String
         }
         return seen.count
     }
+    
+    // Compute the number of unique characters.
+    func charactersToCount() -> [String: Int]
+    {
+        var result = [String: Int]()
+        for ch in self
+        {
+            result[String(ch)] = (result[String(ch)] ?? 0) + 1
+        }
+        return result
+    }
+    
+}
+
+extension Sequence where Element: Numeric 
+{
+    // Returns the sum of all elements in the collection
+    func sum() -> Element { return reduce(0, +) }
 }

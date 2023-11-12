@@ -303,7 +303,29 @@ class PPMLanguageModel: CustomStringConvertible
         assert(totalMass == 0.0, "Expected remaining probability mass to be zero!")
         assert(abs(1.0 - newProbMass) < Constants.EPSILON, "Leftover mass is too big!")
         
+        // All the cool kids sum to 1
+        assert(abs(1.0 - probs.sum()) < Constants.EPSILON, "Probability distribution does not sum to 1.0!")
+        
         return probs
+    }
+
+    // Convience function that provides the probability distribution as a dictionary
+    // mapping token strings to the probability. Drops the root context.
+    func getProbsAsDictionary(context: Context) -> [String: Double]
+    {
+        let probs = getProbs(context: context)
+        var result = [String: Double]()
+        
+        // Loop over all the probabilities and create the dictionary entry.
+        for i in 1..<probs.count
+        {
+            let token = vocab.getToken(ofSymbol: i)
+            if let token = token
+            {
+                result[token] = probs[i]
+            }
+        }
+        return result
     }
     
     // Helper function for printing out the suffix tree.
@@ -349,7 +371,7 @@ class PPMLanguageModel: CustomStringConvertible
         var skipped = 0
                     
         // Start at the root context.
-        var c = createContext()
+        let c = createContext()
         
         // Loop over each character in the string.
         for ch in text

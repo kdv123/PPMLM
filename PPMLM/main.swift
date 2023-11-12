@@ -124,10 +124,26 @@ assert(skipped == 0, "Should not have skipped any characters in: \(sentences[2])
 assert(lm.numNodes == v.size, "After sentences[0..2] PPM nodes and vocab should be same size!")
 lm.printTree()
 
-// Test that the probability of each character is frequency in sentences.
+// Dictionary version of probability results
 print("*** Test \(test)"); test += 1
 c = lm.createContext()
-probs = lm.getProbs(context: c)
-print(probs)
+var probsDict = lm.getProbsAsDictionary(context: c)
+print(probsDict)
+assert(probsDict.count == alphabet.count, "Dictionary probs should be same size as alphabet!")
+assert(abs(1.0 - probsDict.values.sum()) < Constants.EPSILON, "Dictionary probs don't sum to 1!")
 
-let totalChars = sentences[0].count + sentences[1].count + sentences[2].count
+// Test that the probability of each character is frequency in sentences.
+print("*** Test \(test)"); test += 1
+let sentencesAll = sentences[0] + sentences[1] + sentences[2]
+let totalChars = sentencesAll.count
+let charCounts = sentencesAll.charactersToCount()
+for ch in probsDict
+{
+    let count = charCounts[ch.key] ?? 0
+    let prob = Double(count) / Double(totalChars)
+    
+    print("\(ch.key) = \(prob) vs \(ch.value) = \(abs(ch.value - prob))")
+}
+        
+print(charCounts)
+
