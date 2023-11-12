@@ -364,7 +364,6 @@ class PPMLanguageModel: CustomStringConvertible
     // This assumes:
     //   1) Training starts at the root context.
     //   2) Tokens not in the vocabulary are skipped over.
-    //
     // Returns number of skipped tokens.
     func train(text: String) -> Int
     {
@@ -389,4 +388,18 @@ class PPMLanguageModel: CustomStringConvertible
         
         return skipped
     }
+    
+    // Trains on a set of strings.
+    // Each element is trained on separately and assumed conditions on root context.
+    // Returns number of skipped tokens.
+    func train(texts: [String]) -> Int
+    {
+        var skipped = 0
+        for text in texts
+        {
+            skipped += train(text: text)
+        }
+        return skipped
+    }
+    
 }

@@ -132,6 +132,18 @@ print(probsDict)
 assert(probsDict.count == alphabet.count, "Dictionary probs should be same size as alphabet!")
 assert(abs(1.0 - probsDict.values.sum()) < Constants.EPSILON, "Dictionary probs don't sum to 1!")
 
+// Train on the three sentences in a single call
+print("*** Test \(test)"); test += 1
+lm = PPMLanguageModel(vocab: v, maxOrder: 0)
+skipped = lm.train(texts: sentences)
+var probsDictAll = lm.getProbsAsDictionary(context: c)
+assert(skipped == 2, "Should have skipped 2 characters in all three sentences!")
+for entry in probsDict
+{
+    assert(abs(entry.value - (probsDictAll[entry.key] ?? 0.0)) < Constants.EPSILON, "Mismatch probability \(entry)!")
+}
+
+/*
 // Test that the probability of each character is frequency in sentences.
 print("*** Test \(test)"); test += 1
 let sentencesAll = sentences[0] + sentences[1] + sentences[2]
@@ -144,6 +156,5 @@ for ch in probsDict
     
     print("\(ch.key) = \(prob) vs \(ch.value) = \(abs(ch.value - prob))")
 }
-        
 print(charCounts)
-
+*/
