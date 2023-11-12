@@ -51,7 +51,7 @@ class PPMLanguageModel: CustomStringConvertible
                 }
             }
             
-            var symbolNode = Node(symbol: symbol, next: toNode.child, backoff: backoff)
+            let symbolNode = Node(symbol: symbol, next: toNode.child, backoff: backoff)
             toNode.child = symbolNode
             numNodes += 1
             return symbolNode
@@ -59,7 +59,7 @@ class PPMLanguageModel: CustomStringConvertible
     }
         
     // Creates new context which is initially empty.
-    func createEmptyContext() -> Context
+    func createContext() -> Context
     {
         return Context(order: rootContext.order, head: rootContext.head)
     }
@@ -71,7 +71,7 @@ class PPMLanguageModel: CustomStringConvertible
     }
 
     // Adds symbol to the supplied context. Does not update the model.
-    func add(symbol: Int, toContext: Context)
+    func addSymbolToContext(context: Context, symbol: Int)
     {
         // Only add valid symbols.
         if symbol <= Constants.ROOT_SYMBOL
@@ -79,25 +79,25 @@ class PPMLanguageModel: CustomStringConvertible
             return
         }
         assert(symbol < vocab.size, "Invalid symbol: \(symbol)")
-            
+
         while true
         {
-            if toContext.order < maxOrder
+            if context.order < maxOrder
             {
                 // Extend the current context.
-                let childNode = toContext.head.findChildWith(symbol: symbol)
+                let childNode = context.head.findChildWith(symbol: symbol)
                 if let childNodeUnwrapped = childNode
                 {
-                    toContext.head = childNodeUnwrapped
-                    toContext.order += 1
+                    context.head = childNodeUnwrapped
+                    context.order += 1
                     return
                 }
             }
             // Try to extend the shorter context.
-            toContext.order -= 1
-            if let backoff = toContext.head.backoff
+            context.order -= 1
+            if let backoff = context.head.backoff
             {
-                toContext.head = backoff
+                context.head = backoff
             }
             else
             {
@@ -105,12 +105,12 @@ class PPMLanguageModel: CustomStringConvertible
             }
         }
         // TODO: Is this correct without the if? line 267 in pppm_language_model.js
-        toContext.head = root
-        toContext.order = 0
+        context.head = root
+        context.order = 0
     }
 
     // Adds symbol to the supplied context and update the model.
-    func addAndUpdate(symbol: Int, toContext: Context)
+    func addSymbolAndUpdate(context: Context, symbol: Int)
     {
         // Only add valid symbols.
         if symbol <= Constants.ROOT_SYMBOL
@@ -119,20 +119,20 @@ class PPMLanguageModel: CustomStringConvertible
         }
         assert(symbol < vocab.size, "Invalid symbol: \(symbol)")
         
-        let symbolNode = add(symbol: symbol, toNode: toContext.head)
+        let symbolNode = add(symbol: symbol, toNode: context.head)
         // TODO: Is this needed? Seems like it might slow things down.
-        assert(symbolNode === toContext.head.findChildWith(symbol: symbol), "failed to find added child")
+        assert(symbolNode === context.head.findChildWith(symbol: symbol), "failed to find added child")
 
-        toContext.head = symbolNode
-        toContext.order += 1
+        context.head = symbolNode
+        context.order += 1
         
         // TODO: Do we really need a loop here? Can't we only go over by 1?
-        while toContext.order > maxOrder
+        while context.order > maxOrder
         {
-            if let backoff = toContext.head.backoff
+            if let backoff = context.head.backoff
             {
-                toContext.head = backoff
-                toContext.order -= 1
+                context.head = backoff
+                context.order -= 1
             }
             else
             {
@@ -141,16 +141,191 @@ class PPMLanguageModel: CustomStringConvertible
         }
     }
  
+    // Returns probabilities for all the symbols in the vocabulary given the
+    // context.
+    //
+    // Notation:
+    // ---------
+    //         $x_h$ : Context representing history, $x_{h-1}$ shorter context.
+    //   $n(w, x_h)$ : Count of symbol $w$ in context $x_h$.
+    //      $T(x_h)$ : Total count in context $x_h$.
+    //      $q(x_h)$ : Number of symbols with non-zero counts seen in context
+    //                 $x_h$, i.e. |{w' : c(x_h, w') > 0}|. Alternatively, this
+    //                 represents the number of distinct extensions of history
+    //                 $x_h$ in the training data.
+    //
+    // Standard Kneser-Ney method (aka Absolute Discounting):
+    // ------------------------------------------------------
+    // Subtracting \beta (in [0, 1)) from all counts.
+    //   P_{kn}(w | x_h) = \frac{\max(n(w, x_h) - \beta, 0)}{T(x_h)} +
+    //                     \beta * \frac{q(x_h)}{T(x_h)} * P_{kn}(w | x_{h-1}),
+    // where the second term in summation represents escaping to lower-order
+    // context.
+    //
+    // See: Ney, Reinhard and Kneser, Hermann (1995): “Improved backing-off for
+    // M-gram language modeling”, Proc. of Acoustics, Speech, and Signal
+    // Processing (ICASSP), May, pp. 181–184.
+    //
+    // Modified Kneser-Ney method (Dasher version [3]):
+    // ------------------------------------------------
+    // Introducing \alpha parameter (in [0, 1)) and estimating as
+    //   P_{kn}(w | x_h) = \frac{\max(n(w, x_h) - \beta, 0)}{T(x_h) + \alpha} +
+    //                     \frac{\alpha + \beta * q(x_h)}{T(x_h) + \alpha} *
+    //                     P_{kn}(w | x_{h-1}) .
+    //
+    // Additional details on the above version are provided in Sections 3 and 4
+    // of:
+    //   Steinruecken, Christian and Ghahramani, Zoubin and MacKay, David (2016):
+    //   "Improving PPM with dynamic parameter updates", In Proc. Data
+    //   Compression Conference (DCC-2015), pp. 193--202, April, Snowbird, UT,
+    //   USA. IEEE.
+    func getProbs(context: Context) -> [Double]
+    {
+        // Initialize the initial estimates. Note, we don't use uniform
+        // distribution here.
+        var probs = [Double](repeating: 0.0, count: vocab.size)
+        
+        // Initialize the exclusion mask.
+        // We'll add symbol IDs to the set if they are to be excluded.
+        var exclusionMask = Set<Int>()
+        
+        // Estimate the probabilities for all the symbols in the supplied context.
+        // This runs over all the symbols in the context and over all the suffixes
+        // (orders) of the context. If the exclusion mechanism is enabled, the
+        // estimate for a higher-order ngram is fully trusted and is excluded from
+        // further interpolation with lower-order estimates.
+        //
+        // Exclusion mechanism is disabled by default. Enable it with care: it has
+        // been shown to work well on large corpora, but may in theory degrade the
+        // performance on smaller sets (as we observed with default Dasher English
+        // training data).
+        var totalMass = 1.0;
+        var node = context.head
+        var gamma = totalMass
+        while true
+        {
+            let count = node.totalChildrenCounts(exclusionMask: exclusionMask)
+            if count > 0
+            {
+                var childNode = node.child
+                while let childNodeUnwrapped = childNode
+                {
+                    let symbol = childNodeUnwrapped.symbol
+                    if !useExclusion || !exclusionMask.contains(symbol)
+                    {
+                        let p = gamma * (Double(childNodeUnwrapped.count) - Constants.KN_BETA) / (Double(count) + Constants.KN_ALPHA)
+                        probs[symbol] += p
+                        totalMass -= p
+                        if useExclusion
+                        {
+                            exclusionMask.insert(symbol)
+                        }
+                    }
+                    childNode = childNodeUnwrapped.next
+                }
+            }
+            
+            // Backoff to lower-order context. The $\gamma$ factor represents the
+            // total probability mass after processing the current $n$-th order before
+            // backing off to $n-1$-th order. It roughly corresponds to the usual
+            // interpolation parameter, as used in the literature, e.g. in
+            //   Stanley F. Chen and Joshua Goodman (1999): "An empirical study of
+            //   smoothing techniques for language modeling", Computer Speech and
+            //   Language, vol. 13, pp. 359-–394.
+            //
+            // Note on computing $gamma$:
+            // --------------------------
+            // According to the PPM papers, and in particular the Section 4 of
+            //   Steinruecken, Christian and Ghahramani, Zoubin and MacKay,
+            //   David (2016): "Improving PPM with dynamic parameter updates", In
+            //   Proc. Data Compression Conference (DCC-2015), pp. 193--202, April,
+            //   Snowbird, UT, USA. IEEE,
+            // that describes blending (i.e. interpolation), the second multiplying
+            // factor in the interpolation $\lambda$ for a given suffix node $x_h$ in
+            // the tree is given by
+            //   \lambda(x_h) = \frac{q(x_h) * \beta + \alpha}{T(x_h) + \alpha} .
+            // It can be shown that
+            //   \gamma(x_h) = 1.0 - \sum_{w'}
+            //      \frac{\max(n(w', x_h) - \beta, 0)}{T(x_h) + \alpha} =
+            //      \lambda(x_h)
+            // and, in the update below, the following is equivalent:
+            //   \gamma = \gamma * \gamma(x_h) = totalMass .
+            //
+            // Since gamma *= (numChildren * knBeta + knAlpha) / (count + knAlpha) is
+            // expensive, we assign the equivalent totalMass value to gamma.
+            gamma = totalMass
+            if let backoff = node.backoff
+            {
+                node = backoff
+            }
+            else
+            {
+                break
+            }
+        }
+        assert(totalMass >= 0.0, "Invalid remaining probability mass: \(totalMass)")
+        
+        // Count the total number of symbols that should have their estimates
+        // blended with the uniform distribution representing the zero context.
+        // When exclusion mechanism is enabled (by enabling this.useExclusion_)
+        // this number will represent the number of symbols not seen during the
+        // training, otherwise, this number will be equal to total number of
+        // symbols because we always interpolate with the estimates for an empty
+        // context.
+        // TODO: Should be able to just calculate this from vocab/set size
+        var numUnseenSymbols = 0
+        for i in 1..<vocab.size
+        {
+            if (!useExclusion || !exclusionMask.contains(i))
+            {
+                numUnseenSymbols += 1
+            }
+        }
+        
+        // Adjust the probability mass for all the symbols.
+        // TODO: Silly to calculate inside the loop for a constant
+        let remainingMass = totalMass
+        for i in 1..<vocab.size
+        {
+            // Following is estimated according to a uniform distribution
+            // corresponding to the context length of zero.
+            if !useExclusion || !exclusionMask.contains(i)
+            {
+                let p = remainingMass / Double(numUnseenSymbols)
+                probs[i] += p
+                totalMass -= p
+            }
+        }
+        
+        var leftSymbols = vocab.size - 1
+        var newProbMass = 0.0;
+        for i in 1..<vocab.size
+        {
+            let p = totalMass / Double(leftSymbols)
+            probs[i] += p;
+            totalMass -= p;
+            newProbMass += probs[i];
+            leftSymbols -= 1
+        }
+        
+        assert(totalMass == 0.0, "Expected remaining probability mass to be zero!")
+        assert(abs(1.0 - newProbMass) < Constants.EPSILON, "Leftover mass!")
+        
+        return probs
+    }
+    
     // Helper function for printing out the suffix tree.
     private func printTree(node: Node, indent: String)
     {
         print("\(indent)\(node)")
         let indentMore = indent + "  "
         
-        while let child = node.child
+        var current = node.child
+        
+        while let currentUnwrapped = current
         {
-            printTree(node: child, indent: indentMore)
-            node.child = child.next
+            printTree(node: currentUnwrapped, indent: indentMore)
+            current = currentUnwrapped.next
         }
     }
 
