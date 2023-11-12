@@ -110,6 +110,11 @@ class Node: CustomStringConvertible
     // Provide a friendly string version of this instance.
     var description: String
     {
-        return "(Node symbol \(symbol) count \(count))"
+        return "(Node symbol \(symbol) " +
+        "count \(count) " +
+        "child \(Utils.isObjectNotNil(object: child)) " +
+        "next \(Utils.isObjectNotNil(object: next)) " +
+        "backoff \(Utils.isObjectNotNil(object: backoff)) " +
+        ")"
     }
 }

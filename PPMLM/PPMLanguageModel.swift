@@ -1,6 +1,7 @@
-// Prediction by partial matching (PPM) language model
+// Prediction by partial matching (PPM) language model.
+// Based on Google's JavaScript implementation: https://github.com/google-research/google-research/tree/master/jslm
 
-class PPMLanguageModel: CustomStringConvertible 
+class PPMLanguageModel: CustomStringConvertible
 {
     private let vocab: Vocabulary
     private let root: Node
