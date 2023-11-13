@@ -263,7 +263,7 @@ print("*** Test \(test)"); test += 1
 lines = try Utils.readLinesFrom(filename: DAILY_DIALOG_TRAIN_FULL)
 startMem = Utils.memoryUsed()
 startTime = ProcessInfo.processInfo.systemUptime
-lm = PPMLanguageModel(vocab: v, maxOrder: 13)
+lm = PPMLanguageModel(vocab: v, maxOrder: 46)
 skipped = lm.train(texts: lines)
 endTime = ProcessInfo.processInfo.systemUptime
 endMem = Utils.memoryUsed()
@@ -279,7 +279,7 @@ print("Estimated bytes per Node: \(String(format: "%.2f", bytesPerNode))")
 
 lines = try Utils.readLinesFrom(filename: DAILY_DIALOG_DEV_FULL)
 startTime = ProcessInfo.processInfo.systemUptime
-result = lm.evaluate(texts: lines, updateModel: false)
+result = lm.evaluate(texts: lines, updateModel: true)
 endTime = ProcessInfo.processInfo.systemUptime
 evalChars = Utils.countCharacters(texts: lines)
 print(result)
