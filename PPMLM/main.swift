@@ -3,6 +3,12 @@
 
 import Foundation
 
+// TODO: Change to match your system, used to find training text files.
+let PPMLM_HOME = "/Users/vertanen/PPMLM/"
+
+// Actual filenames some of the test depend on
+let DAILY_DIALOG_TRAIN = "\(PPMLM_HOME)/data/daily_train_10k.txt"
+
 // Create a small vocabulary.
 var v = Vocabulary()
 let aSymbol = v.add(token: "a")
@@ -142,6 +148,36 @@ for entry in probsDict
 {
     assert(abs(entry.value - (probsDictAll[entry.key] ?? 0.0)) < Constants.EPSILON, "Mismatch probability \(entry)!")
 }
+
+// Training on a bunch of sentences with a longer order model.
+// Track how long it takes and about how much memory it took.
+print("*** Test \(test)"); test += 1
+var lines = [String]()
+let fileURL = URL(fileURLWithPath: DAILY_DIALOG_TRAIN)
+let trainData = try Data(contentsOf: fileURL)
+if let trainLines = String(data: trainData, encoding: .utf8)
+{
+    lines = trainLines.lines
+}
+let startMem = Utils.memoryUsed()
+let startTime = ProcessInfo.processInfo.systemUptime
+lm = PPMLanguageModel(vocab: v, maxOrder: 8)
+skipped = lm.train(texts: lines)
+let endTime = ProcessInfo.processInfo.systemUptime
+let endMem = Utils.memoryUsed()
+var trainChars = 0
+for line in lines
+{
+    trainChars += line.count
+}
+print("Training lines \(lines.count), chars \(trainChars), skipped chars \(skipped), PPM nodes \(lm.numNodes)")
+let elapsed = endTime - startTime
+print("Train time: \(String(format: "%.4f", elapsed))" +
+      ", chars/second: \(String(format: "%.1f", (Double(trainChars) / elapsed)))")
+let memMB = Double(endMem - startMem) / 1000000.0
+print("Memory increase in MB: \(String(format: "%.2f", memMB))")
+let bytesPerNode = Double(endMem - startMem) / Double(lm.numNodes)
+print("Estimated bytes per Node: \(String(format: "%.2f", bytesPerNode))")
 
 /*
 // Test that the probability of each character is frequency in sentences.
