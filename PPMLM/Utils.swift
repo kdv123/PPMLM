@@ -25,6 +25,12 @@ class Utils
         return true
     }
     
+    // Calculate the perplexity given a sum of log probs (base 10).
+    static func perplexity(sumLog10Prob: Double, numEvents: Int) -> Double
+    {
+        return pow(10, -1.0 * sumLog10Prob / Double(numEvents))
+    }
+    
     // Return memory used in bytes.
     // https://stackoverflow.com/questions/40991912/how-to-get-memory-usage-of-my-application-and-system-in-swift-by-programatically
     static func memoryUsed() -> Int
@@ -49,6 +55,32 @@ class Utils
                 (String(cString: mach_error_string(kerr), encoding: String.Encoding.ascii) ?? "unknown error"))
             return 0
         }
+    }
+    
+    // Read all the lines from a given filename.
+    // Returns a list of all the lines.
+    static func readLinesFrom(filename: String) throws -> [String]
+    {
+        var lines = [String]()
+        let fileURL = URL(fileURLWithPath: filename)
+        let trainData = try Data(contentsOf: fileURL)
+        if let trainLines = String(data: trainData, encoding: .utf8)
+        {
+            lines = trainLines.lines
+        }
+        return lines
+    }
+    
+    
+    // Sum the length of an array of strings.
+    static func countCharacters(texts: [String]) -> Int
+    {
+        var chars = 0
+        for line in texts
+        {
+            chars += line.count
+        }
+        return chars
     }
 }
 

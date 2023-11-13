@@ -1,6 +1,8 @@
 // Prediction by partial matching (PPM) language model.
 // Based on Google's JavaScript implementation: https://github.com/google-research/google-research/tree/master/jslm
 
+import Foundation
+
 class PPMLanguageModel: CustomStringConvertible
 {
     private let vocab: Vocabulary
@@ -114,7 +116,7 @@ class PPMLanguageModel: CustomStringConvertible
     }
 
     // Adds symbol to the supplied context and update the model.
-    func addSymbolAndUpdate(context: Context, symbol: Int)
+    func addSymbolToContextAndUpdate(context: Context, symbol: Int)
     {
         // Only add valid symbols.
         if symbol >= vocab.size || symbol < Constants.ROOT_SYMBOL
@@ -364,6 +366,7 @@ class PPMLanguageModel: CustomStringConvertible
     // This assumes:
     //   1) Training starts at the root context.
     //   2) Tokens not in the vocabulary are skipped over.
+    //   3) Each character in the string is considered a token.
     // Returns number of skipped tokens.
     func train(text: String) -> Int
     {
@@ -378,7 +381,7 @@ class PPMLanguageModel: CustomStringConvertible
             let symbol = vocab.getSymbol(ofToken: String(ch))
             if let symbol = symbol
             {
-                addSymbolAndUpdate(context: c, symbol: symbol)
+                addSymbolToContextAndUpdate(context: c, symbol: symbol)
             }
             else
             {
@@ -401,5 +404,63 @@ class PPMLanguageModel: CustomStringConvertible
         }
         return skipped
     }
+    
+    // Compute the log (base 10) probability of some text.
+    // This assume we condition the first character on the root symbol.
+    // Be default, the model's counts are not updated during evaluation.
+    // Skips over any characters not in the vocab.
+    // There is no end of sentence symbol, so number of events is length of text.
+    // Returns a tuple containing various stats about the evaluation.
+    func evaluate(text: String, updateModel: Bool = false) ->
+        (sumLogProb: Double, tokensGood: Int, tokensSkipped: Int, perplexity: Double)
+    {
+        let c = createContext()
+        var sumLogProb = 0.0
+        var tokensGood = 0
+        var tokensSkipped = 0
+        
+        for ch in text
+        {
+            // Try and map this character to a numeric symbol ID
+            let nextSymbol = vocab.getSymbol(ofToken: String(ch))
+            if let nextSymbol = nextSymbol
+            {
+                sumLogProb += log10(getProbs(context: c)[nextSymbol])
+                tokensGood += 1
+                if updateModel
+                {
+                    addSymbolToContextAndUpdate(context: c, symbol: nextSymbol)
+                }
+                else
+                {
+                    addSymbolToContext(context: c, symbol: nextSymbol)
+                }
+            }
+            else
+            {
+                tokensSkipped += 1
+            }
+        }
+        return (sumLogProb, tokensGood, tokensSkipped, Utils.perplexity(sumLog10Prob: sumLogProb, numEvents: tokensGood))
+    }
+    
+    // Convience function that evaluates on a set of texts.
+    func evaluate(texts: [String], updateModel: Bool = false) ->
+        (sumLogProb: Double, tokensGood: Int, tokensSkipped: Int, perplexity: Double)
+    {
+        var sumLogProb = 0.0
+        var tokensGood = 0
+        var tokensSkipped = 0
+        
+        for text in texts
+        {
+            let result = evaluate(text: text, updateModel: updateModel)
+            sumLogProb += result.sumLogProb
+            tokensGood += result.tokensGood
+            tokensSkipped += result.tokensSkipped
+        }
+        return (sumLogProb, tokensGood, tokensSkipped, Utils.perplexity(sumLog10Prob: sumLogProb, numEvents: tokensGood))
+    }
+    
     
 }
