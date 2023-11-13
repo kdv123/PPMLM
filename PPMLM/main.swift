@@ -8,13 +8,11 @@ let PPMLM_HOME = "/Users/vertanen/PPMLM/"
 
 // Actual filenames some of the test depend on.
 let DAILY_DIALOG_TRAIN = "\(PPMLM_HOME)/data/daily_train_10k.txt"
-let DAILY_DIALOG_DEV = "\(PPMLM_HOME)/data/daily_dev_1k.txt"
+let AAC_DEV_TEST = "\(PPMLM_HOME)/data/aac_dev_test.txt"
 
 // Not in github due to size, but you can download from:
 // https://data.imagineville.org/daily_train.txt.gz
-// https://data.imagineville.org/daily_dev.txt.gz
 let DAILY_DIALOG_TRAIN_FULL = "\(PPMLM_HOME)/data/daily_train.txt"
-let DAILY_DIALOG_DEV_FULL = "\(PPMLM_HOME)/data/daily_dev.txt"
 
 // Create a small vocabulary.
 var v = Vocabulary()
@@ -205,7 +203,7 @@ assert(result.tokensSkipped == 2, "Inference multiple sentences wrong number of 
 // Calculate on 1K sentences from the daily dialog dev set.
 // Also time how long this takes.
 print("*** Test \(test)"); test += 1
-lines = try Utils.readLinesFrom(filename: DAILY_DIALOG_DEV)
+lines = try Utils.readLinesFrom(filename: AAC_DEV_TEST)
 startTime = ProcessInfo.processInfo.systemUptime
 result = lm.evaluate(texts: lines)
 endTime = ProcessInfo.processInfo.systemUptime
@@ -215,7 +213,7 @@ elapsed = endTime - startTime
 print("Eval time: \(String(format: "%.4f", elapsed))" +
       ", chars/second: \(String(format: "%.1f", (Double(evalChars) / elapsed)))")
 // NOTE: test answers were not validated against anything else.
-assert(abs(-17345.781370960598 - result.sumLogProb) < Constants.EPSILON, "Inference multiple sentences logprob didn't match!")
+assert(abs(-87724.20036642274 - result.sumLogProb) < Constants.EPSILON, "Inference multiple sentences logprob didn't match!")
 assert(result.tokensGood == evalChars, "Eval dev wrong number of good tokens!")
 assert(result.tokensSkipped == 0, "Eval dev wrong number of skipped tokens!")
 
@@ -245,7 +243,7 @@ print("*** Test \(test)"); test += 1
 lines = try Utils.readLinesFrom(filename: DAILY_DIALOG_TRAIN)
 lm = PPMLanguageModel(vocab: v, maxOrder: 8)
 skipped = lm.train(texts: lines)
-lines = try Utils.readLinesFrom(filename: DAILY_DIALOG_DEV)
+lines = try Utils.readLinesFrom(filename: AAC_DEV_TEST)
 startTime = ProcessInfo.processInfo.systemUptime
 result = lm.evaluate(texts: lines, updateModel: true)
 endTime = ProcessInfo.processInfo.systemUptime
@@ -256,14 +254,14 @@ print("Eval time with update: \(String(format: "%.4f", elapsed))" +
       ", chars/second: \(String(format: "%.1f", (Double(evalChars) / elapsed)))")
 // NOTE: test answers were not validated against anything else.
 // This logprob sum was a bit lower than without adapting.
-assert(abs(-17265.095778974654 - result.sumLogProb) < Constants.EPSILON, "Eval dev adaptive logprob didn't match!")
+assert(abs(-82724.08132924688 - result.sumLogProb) < Constants.EPSILON, "Eval dev adaptive logprob didn't match!")
 
 // Training and evaluate on the full daily dialog training and dev sets.
 print("*** Test \(test)"); test += 1
 lines = try Utils.readLinesFrom(filename: DAILY_DIALOG_TRAIN_FULL)
 startMem = Utils.memoryUsed()
 startTime = ProcessInfo.processInfo.systemUptime
-lm = PPMLanguageModel(vocab: v, maxOrder: 46)
+lm = PPMLanguageModel(vocab: v, maxOrder: 9)
 skipped = lm.train(texts: lines)
 endTime = ProcessInfo.processInfo.systemUptime
 endMem = Utils.memoryUsed()
@@ -277,7 +275,7 @@ print("Memory increase in MB: \(String(format: "%.2f", memMB))")
 bytesPerNode = Double(endMem - startMem) / Double(lm.numNodes)
 print("Estimated bytes per Node: \(String(format: "%.2f", bytesPerNode))")
 
-lines = try Utils.readLinesFrom(filename: DAILY_DIALOG_DEV_FULL)
+lines = try Utils.readLinesFrom(filename: AAC_DEV_TEST)
 startTime = ProcessInfo.processInfo.systemUptime
 result = lm.evaluate(texts: lines, updateModel: true)
 endTime = ProcessInfo.processInfo.systemUptime
@@ -286,37 +284,17 @@ print(result)
 elapsed = endTime - startTime
 print("Eval time with update: \(String(format: "%.4f", elapsed))" +
       ", chars/second: \(String(format: "%.1f", (Double(evalChars) / elapsed)))")
+assert(abs(-78138.42692423137 - result.sumLogProb) < Constants.EPSILON, "Eval dev adaptive logprob didn't match!")
 
 // Results training on full daily dialog training set.
-// Evaluating on full daily dialog dev set.
-// Somewhat surprisingly log probs keep going down until order 46???
-//
+// Evaluating on AAC dev/test set from https://imagineville.org/software/lm/feb21_dasher/
 // ppm-order log prob (adaptive)   log prob (non-adaptive)  equiv WB n-gram   interpolated WB
-// 8         -80803.04781161589     -81267.94875818679      -90560.2328
-// 9         -79004.9471623623                              -90470.7572
-// 10        -77597.63778026955     -78154.0740496664       -90580.0537
-// 11        -76495.53944577114                             -90710.5796       -91718.455
-// 12        -75655.63867718409
-// 13        -75042.54431912405     -75674.46689984178
-// 14        -74550.43008736016
-// 15        -74173.00105026328
-// 16        -73874.11085974947
-// 17        -73638.73357302728
-// 18        -73452.72045229386
-// 19        -73309.67322082356
-// 20        -73197.8179556792      -73885.59231629405      -92127.7789
-// 21        -73108.10555816554
-// 22        -73037.45635093766
-// 23        -72982.6292653038
-// 24        -72938.09758520976
-// 25        -72902.79597473949
-// 26        -72874.92896302044
-// 30        -72808.18054816425     -73504.21721223652
-// 34        -72782.12115890844
-// 38        -72772.6462998803
-// 42        -72769.21853496788
-// 46        -72768.30086296922
-// 50        -72768.52486185539     -73464.67687084603
+// 7         -78621.98141020491    -80789.82665258418
+// 8         -78144.00404470577    -80479.03825578607       -87122.5216
+// 9         -78138.42692423137    -80593.34598803819       -88159.6325
+// 10        -78301.01233848355    -80828.55373719665       -89112.5575
+// 11        -78567.49759372474    -81151.09168887722       -89940.0984       -104849.1723
+// 12        -78794.46570954652    -81415.94914405495
 
 print("*** TESTS COMPLETED")
 /*
