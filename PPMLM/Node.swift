@@ -11,11 +11,13 @@
 
 class Node: CustomStringConvertible
 {
+    static let NULL = UInt32.max
+    
     // Node containing the linked list that has symbols extending this node by one more symbol.
-    var child: Node?
+    var child: UInt32 = Node.NULL
     
     // Next node in the linked list for seen symbols after our current Node's context.
-    private(set) var next: Node?
+    private(set) var next: UInt32 = Node.NULL
 
     // Node in the backoff structure, also known as "vine" structure (see [1]
     // above) and "suffix link" (see [2] above). The backoff for the given node
@@ -27,7 +29,7 @@ class Node: CustomStringConvertible
     // need to be. For example, for the node "B" in the trie path for the string
     // "AB" ("[R] -> [A] -> [*B*]") the backoff points at the child node of a
     // different path "[R] -> [*B*]".
-    private(set) var backoff: Node?
+    private(set) var backoff: UInt32 = Node.NULL
     
     // Frequency count for this node. Number of times the suffix symbol stored
     // in this node was observed.
@@ -42,7 +44,7 @@ class Node: CustomStringConvertible
     }
     
     // Contruct for a given symbol and possible pointers to other Nodes.
-    init(symbol: Int, next: Node?, backoff: Node?)
+    init(symbol: Int, next: UInt32, backoff: UInt32)
     {
         self.symbol = symbol
         self.next = next
@@ -55,66 +57,14 @@ class Node: CustomStringConvertible
         count += 1
     }
     
-    // Finds child of the current node with a specified symbol.
-    // Returns the Node object that matches the symbol if any.
-    func findChildWith(symbol: Int) -> Node?
-    {
-        var current = child
-        // Loop until we hit the end of the linked list.
-        while let currentUnwrapped = current
-        {
-            if (currentUnwrapped.symbol == symbol)
-            {
-                // Found the desired symbol.
-                return currentUnwrapped;
-            }
-            current = currentUnwrapped.next
-        }
-        return current;
-    }
-    
-    // Total number of observations for all the children of this node. This
-    // counts all the events observed in this context.
-    //
-    // Note: This API is used at inference time. A possible alternative that will
-    // speed up the inference is to store the number of children in each node as
-    // originally proposed by Moffat for PPMB in
-    //   Moffat, Alistair (1990): "Implementing the PPM data compression scheme",
-    //   IEEE Transactions on Communications, vol. 38, no. 11, pp. 1917--1921.
-    // This however will increase the memory use of the algorithm which is already
-    // quite substantial.
-    func totalChildrenCounts(exclusionMask: Set<Int>?) -> Int
-    {
-        var current = child
-        var count = 0
-        // Loop until we hit the end of the linked list.
-        while let currentUnwrapped = current
-        {
-            if let exclusionMaskUnwrapped = exclusionMask
-            {
-                if !exclusionMaskUnwrapped.contains(currentUnwrapped.symbol)
-                {
-                    count += currentUnwrapped.count
-                }
-            }
-            else
-            {
-                // No exclusion mask specified, sum all the children
-                count += currentUnwrapped.count
-            }
-            current = currentUnwrapped.next
-        }
-        return count;
-    }
-    
     // Provide a friendly string version of this instance.
     var description: String
     {
         return "(Node symbol \(symbol) " +
         "count \(count) " +
-        "child \(Utils.isObjectNotNil(object: child)) " +
-        "next \(Utils.isObjectNotNil(object: next)) " +
-        "backoff \(Utils.isObjectNotNil(object: backoff)) " +
+        "child \(child) " +
+        "next \(next) " +
+        "backoff \(backoff) " +
         ")"
     }
 }

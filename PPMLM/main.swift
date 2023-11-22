@@ -299,6 +299,16 @@ assert(abs(-78138.42692423137 - result.sumLogProb) < Constants.EPSILON, "Eval de
 // (sumLogProb: -78138.42692423137, tokensGood: 156882, tokensSkipped: 0, perplexity: 3.1482653779731993)
 // Eval time with update: 5.2502, chars/second: 29881.1
 
+// *** Test 20, using array indexes
+// Training lines 46427, chars 1752271, skipped chars 0, PPM nodes 2234348
+// Train time: 4.4110, chars/second: 397246.7
+// Memory increase in MB: 118.33
+// Estimated bytes per Node: 52.96
+// Num nodes: 2234348
+// Tree stats: (nodes: 2234348, leaves: 705995, singletons: 1742596)
+// (sumLogProb: -78138.42692423137, tokensGood: 156882, tokensSkipped: 0, perplexity: 3.1482653779731993)
+// Eval time with update: 10.8456, chars/second: 14465.1
+
 
 // Results training on full daily dialog training set.
 // Evaluating on AAC dev/test set from https://imagineville.org/software/lm/feb21_dasher/
