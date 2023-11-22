@@ -57,6 +57,7 @@ class PPMLanguageModel: CustomStringConvertible
             let symbolNode = Node(symbol: symbol, next: toNode.child, backoff: backoff)
             toNode.child = symbolNode
             numNodes += 1
+            
             return symbolNode
         }
     }
@@ -354,6 +355,43 @@ class PPMLanguageModel: CustomStringConvertible
         let count = printTree(node: root, indent: "")
         assert(count == numNodes, "Printed number of nodes does not match class counter!")
         print("Total nodes including root: \(count)")
+    }
+
+    // Helper that descends tree summing stats.
+    private func statsTree(node: Node) -> (nodes: Int, leaves: Int, singletons: Int)
+    {
+        var current = node.child
+        var result = (nodes: 0, leaves: 0, singletons: 0)
+        var childCount = 0
+        
+        while let currentUnwrapped = current
+        {
+            let childResult = statsTree(node: currentUnwrapped)
+            result.nodes += childResult.nodes + 1
+            result.leaves += childResult.leaves
+            result.singletons += childResult.singletons
+            if currentUnwrapped.count == 1
+            {
+                result.singletons += 1
+            }
+
+            current = currentUnwrapped.next
+            childCount += 1
+        }
+        if childCount == 0
+        {
+            result.leaves += 1
+        }
+        
+        return result
+    }
+
+    // Calculates various statistics about the tree.
+    func statsTree() -> (nodes: Int, leaves: Int, singletons: Int)
+    {
+        var result = statsTree(node: root)
+        result.nodes += 1
+        return result
     }
     
     // Provide a friendly string version of this instance.

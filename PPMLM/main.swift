@@ -274,6 +274,9 @@ memMB = Double(endMem - startMem) / 1000000.0
 print("Memory increase in MB: \(String(format: "%.2f", memMB))")
 bytesPerNode = Double(endMem - startMem) / Double(lm.numNodes)
 print("Estimated bytes per Node: \(String(format: "%.2f", bytesPerNode))")
+print("Num nodes: \(lm.numNodes)")
+let stats = lm.statsTree()
+print("Tree stats: \(stats)")
 
 lines = try Utils.readLinesFrom(filename: AAC_DEV_TEST)
 startTime = ProcessInfo.processInfo.systemUptime
@@ -285,6 +288,17 @@ elapsed = endTime - startTime
 print("Eval time with update: \(String(format: "%.4f", elapsed))" +
       ", chars/second: \(String(format: "%.1f", (Double(evalChars) / elapsed)))")
 assert(abs(-78138.42692423137 - result.sumLogProb) < Constants.EPSILON, "Eval dev adaptive logprob didn't match!")
+
+// *** Test 20, using pointers
+// Training lines 46427, chars 1752271, skipped chars 0, PPM nodes 2234348
+// Train time: 1.5661, chars/second: 1118905.3
+// Memory increase in MB: 143.11
+// Estimated bytes per Node: 64.05
+// Num nodes: 2234348
+// Tree stats: (nodes: 2234348, leaves: 705995, singletons: 1742596)
+// (sumLogProb: -78138.42692423137, tokensGood: 156882, tokensSkipped: 0, perplexity: 3.1482653779731993)
+// Eval time with update: 5.2502, chars/second: 29881.1
+
 
 // Results training on full daily dialog training set.
 // Evaluating on AAC dev/test set from https://imagineville.org/software/lm/feb21_dasher/
