@@ -9,12 +9,18 @@
 //     Implementation Technique for Varied-Length N-gram Language Models",
 //     MSc. Thesis, Saarland University.
 
+
 struct Node: CustomStringConvertible
 {
     // Constant index value used to denote we aren't pointing anywhere.
     static let NULL = UInt32.max
+
+    // Memory consumed by the struct seems to align on a multiple of 4 bytes.
+    // So to reduce memory consumption, we want all our attributes to be as small as possible.
+    // We provide getters and setters to convert these to Int type for use by the client.
+    // Note that this seems to slow things down a bit, but avoids messy casting in the client.
     
-    // Node containing the linked list that has symbols extending this node by one more symbol.
+    // Index of the Node containing the linked list that has symbols extending this node by one more symbol.
     private var _child: UInt32 = Node.NULL
     var child: Int
     {
@@ -29,7 +35,7 @@ struct Node: CustomStringConvertible
         }
     }
     
-    // Next node in the linked list for seen symbols after our current Node's context.
+    // Index of next node in the linked list for seen symbols after our current Node's context.
     private var _next: UInt32 = Node.NULL
     var next: Int
     {
@@ -70,7 +76,7 @@ struct Node: CustomStringConvertible
     
     // Frequency count for this node. Number of times the suffix symbol stored
     // in this node was observed.
-    private var _count: UInt32 = 1
+    private var _count: UInt16 = 1
     var count: Int
     {
         get
@@ -79,14 +85,14 @@ struct Node: CustomStringConvertible
         }
         set
         {
-            assert(newValue <= UInt32.max, "Count exceeded maximum value!")
-            _count = UInt32(newValue)
+            assert(newValue <= UInt16.max, "Count exceeded maximum value!")
+            _count = UInt16(newValue)
         }
     
     }
     
     // Symbol that this node stores.
-    private var _symbol: UInt32 = UInt32(Constants.ROOT_SYMBOL)
+    private var _symbol: UInt16 = UInt16(Constants.ROOT_SYMBOL)
     var symbol: Int
     {
         get
@@ -95,11 +101,10 @@ struct Node: CustomStringConvertible
         }
         set
         {
-            assert(newValue <= UInt32.max, "Symbol exceeded maximum value!")
-            _symbol = UInt32(newValue)
+            assert(newValue <= UInt16.max, "Symbol exceeded maximum value!")
+            _symbol = UInt16(newValue)
         }
     }
-
     
     // Constructor for the default root Node
     init()

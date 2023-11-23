@@ -366,10 +366,10 @@ struct PPMLanguageModel: CustomStringConvertible
     }
 
     // Helper that descends tree summing stats.
-    private func statsTree(nodeIndex: Int) -> (nodes: Int, leaves: Int, singletons: Int)
+    private func statsTree(nodeIndex: Int) -> TreeStats
     {
         var currentIndex = listNodes[nodeIndex].child
-        var result = (nodes: 0, leaves: 0, singletons: 0)
+        var result = TreeStats()
         var childCount = 0
         
         while currentIndex != Node.NULL
@@ -378,11 +378,15 @@ struct PPMLanguageModel: CustomStringConvertible
             result.nodes += childResult.nodes + 1
             result.leaves += childResult.leaves
             result.singletons += childResult.singletons
-            if listNodes[currentIndex].count == 1
+            let count = listNodes[currentIndex].count
+            if count == 1
             {
                 result.singletons += 1
             }
-
+            if count > result.maxCount
+            {
+                result.maxCount = count
+            }
             currentIndex = listNodes[currentIndex].next
             childCount += 1
         }
@@ -395,7 +399,7 @@ struct PPMLanguageModel: CustomStringConvertible
     }
 
     // Calculates various statistics about the tree.
-    func statsTree() -> (nodes: Int, leaves: Int, singletons: Int)
+    func statsTree() -> TreeStats
     {
         var result = statsTree(nodeIndex: 0)
         result.nodes += 1

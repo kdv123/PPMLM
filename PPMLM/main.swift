@@ -379,18 +379,17 @@ Num nodes: 2380791
  Eval time with update: 8.1363, chars/second: 19281.7
  Num nodes: 2380791
 
- *** Test 20, symbol to UInt8
- sizeof Node 20 stride 20
+ *** Test 20, symbol and count to UInt16
+ sizeof Node 16 stride 16
  Training lines 46427, chars 1752271, skipped chars 0, PPM nodes 2234348
- Train time: 3.2631, chars/second: 536996.1
- Memory increase in MB: 44.70
- Estimated bytes per Node: 20.00
+ Train time: 3.3107, chars/second: 529269.8
+ Memory increase in MB: 35.75
+ Estimated bytes per Node: 16.00
  Num nodes: 2234348
- Tree stats: (nodes: 2234348, leaves: 705995, singletons: 1742596)
+ Tree stats: TreeStats(nodes: 2234348, leaves: 705995, singletons: 1742596, maxCount: 11616)
  (sumLogProb: -78138.42692423137, tokensGood: 156882, tokensSkipped: 0, perplexity: 3.1482653779731993)
- Eval time with update: 7.7999, chars/second: 20113.4
+ Eval time with update: 8.0452, chars/second: 19500.0
  Num nodes: 2380791
- 
 */
 
 // Results training on full daily dialog training set.
