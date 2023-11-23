@@ -3,19 +3,26 @@
 
 import Foundation
 
-class PPMLanguageModel: CustomStringConvertible
+struct PPMLanguageModel: CustomStringConvertible
 {
     private let vocab: Vocabulary
     private let rootContext: Context
     private(set) var maxOrder: Int
     private(set) var numNodes: Int
     var useExclusion: Bool = false
+    
+    // Rather than store pointers in the Nodes, we'll store index into this array.
     private var listNodes = [Node]()
     
-    init(vocab: Vocabulary, maxOrder: Int)
+    init(vocab: Vocabulary, maxOrder: Int, reserveCapacity: Int? = nil)
     {
         self.vocab = vocab
         assert(vocab.size > 1, "Expecting at least two symbols in the vocabulary")
+        
+        if let reserveCapacity = reserveCapacity
+        {
+            listNodes.reserveCapacity(reserveCapacity)
+        }
         
         self.maxOrder = maxOrder
         // First element in the array will be the root node.
@@ -26,7 +33,7 @@ class PPMLanguageModel: CustomStringConvertible
     
     // Add the specified symbol to the Node specified by its array index.
     // Returns index of the existing or the newly created Node.
-    private func add(symbol: Int, toNodeIndex: UInt32) -> UInt32
+    private mutating func add(symbol: Int, toNodeIndex: Int) -> Int
     {
         let symbolIndex = findChildWith(nodeIndex: toNodeIndex, symbol: symbol)
         
@@ -35,7 +42,7 @@ class PPMLanguageModel: CustomStringConvertible
             // Update the counts for the given node.  Only updates the counts for
             // the highest order already existing node for the symbol ('single
             // counting' or 'update exclusion').
-            listNodes[Int(symbolIndex)].incrementCount()
+            listNodes[symbolIndex].incrementCount()
             return symbolIndex
         }
         else
@@ -44,17 +51,17 @@ class PPMLanguageModel: CustomStringConvertible
             // and update the backoff structure for lower contexts.
 
             // Figure out the backoff Node to use for creating the new Node.
-            var backoffIndex: UInt32 = 0  // Shortest possible context.
+            var backoffIndex: Int = 0  // Shortest possible context.
             if toNodeIndex != 0
             {
-                let toNodeBackoffIndex = listNodes[Int(toNodeIndex)].backoff
+                let toNodeBackoffIndex = listNodes[toNodeIndex].backoff
                 backoffIndex = add(symbol: symbol, toNodeIndex: toNodeBackoffIndex)
             }
             
             // Add a new node to our list.
-            let symbolIndex = UInt32(listNodes.count)
-            listNodes.append(Node(symbol: symbol, next: listNodes[Int(toNodeIndex)].child, backoff: backoffIndex))
-            listNodes[Int(toNodeIndex)].child = symbolIndex
+            let symbolIndex = listNodes.count
+            listNodes.append(Node(symbol: symbol, next: listNodes[toNodeIndex].child, backoff: backoffIndex))
+            listNodes[toNodeIndex].child = symbolIndex
             numNodes += 1
             
             return symbolIndex
@@ -102,7 +109,7 @@ class PPMLanguageModel: CustomStringConvertible
             }
             // Try to extend the shorter context.
             context.order -= 1
-            let backoff = listNodes[Int(context.head)].backoff
+            let backoff = listNodes[context.head].backoff
             if backoff != Node.NULL
             {
                 context.head = backoff
@@ -117,7 +124,7 @@ class PPMLanguageModel: CustomStringConvertible
     }
 
     // Adds symbol to the supplied context and update the model.
-    func addSymbolToContextAndUpdate(context: Context, symbol: Int)
+    mutating func addSymbolToContextAndUpdate(context: Context, symbol: Int)
     {
         // Only add valid symbols.
         if symbol >= vocab.size || symbol < Constants.ROOT_SYMBOL
@@ -136,7 +143,7 @@ class PPMLanguageModel: CustomStringConvertible
         // TODO: Do we really need a loop here? Can't we only go over by 1?
         while context.order > maxOrder
         {
-            let backoff = listNodes[Int(context.head)].backoff
+            let backoff = listNodes[context.head].backoff
             if backoff != Node.NULL
             {
                 context.head = backoff
@@ -219,13 +226,13 @@ class PPMLanguageModel: CustomStringConvertible
             let count = totalChildrenCounts(nodeIndex: nodeIndex, exclusionMask: exclusionMask)
             if count > 0
             {
-                var childNodeIndex = listNodes[Int(nodeIndex)].child
+                var childNodeIndex = listNodes[nodeIndex].child
                 while childNodeIndex != Node.NULL
                 {
-                    let symbol = listNodes[Int(childNodeIndex)].symbol
+                    let symbol = listNodes[childNodeIndex].symbol
                     if !useExclusion || !exclusionMask.contains(symbol)
                     {
-                        let p = gamma * (Double(listNodes[Int(childNodeIndex)].count) - Constants.KN_BETA) / (Double(count) + Constants.KN_ALPHA)
+                        let p = gamma * (Double(listNodes[childNodeIndex].count) - Constants.KN_BETA) / (Double(count) + Constants.KN_ALPHA)
                         probs[symbol] += p
                         totalMass -= p
                         if useExclusion
@@ -233,7 +240,7 @@ class PPMLanguageModel: CustomStringConvertible
                             exclusionMask.insert(symbol)
                         }
                     }
-                    childNodeIndex = listNodes[Int(childNodeIndex)].next
+                    childNodeIndex = listNodes[childNodeIndex].next
                 }
             }
             
@@ -265,7 +272,7 @@ class PPMLanguageModel: CustomStringConvertible
             //
             // Since gamma *= (numChildren * knBeta + knAlpha) / (count + knAlpha) is
             // expensive, we assign the equivalent totalMass value to gamma.
-            nodeIndex = listNodes[Int(nodeIndex)].backoff
+            nodeIndex = listNodes[nodeIndex].backoff
             gamma = totalMass
         }
         assert(totalMass >= 0.0, "Invalid remaining probability mass: \(totalMass)")
@@ -334,18 +341,18 @@ class PPMLanguageModel: CustomStringConvertible
     
     // Helper function for printing out the suffix tree.
     // Returns count of printed nodes (sanity check).
-    private func printTree(nodeIndex: UInt32, indent: String) -> Int
+    private func printTree(nodeIndex: Int, indent: String) -> Int
     {
         var result = 1
         print("\(indent)\(nodeIndex)")
         let indentMore = indent + "  "
         
-        var current = listNodes[Int(nodeIndex)].child
+        var current = listNodes[nodeIndex].child
         
         while current != Node.NULL
         {
             result += printTree(nodeIndex: current, indent: indentMore)
-            current = listNodes[Int(current)].next
+            current = listNodes[current].next
         }
         return result
     }
@@ -359,9 +366,9 @@ class PPMLanguageModel: CustomStringConvertible
     }
 
     // Helper that descends tree summing stats.
-    private func statsTree(nodeIndex: UInt32) -> (nodes: Int, leaves: Int, singletons: Int)
+    private func statsTree(nodeIndex: Int) -> (nodes: Int, leaves: Int, singletons: Int)
     {
-        var currentIndex = listNodes[Int(nodeIndex)].child
+        var currentIndex = listNodes[nodeIndex].child
         var result = (nodes: 0, leaves: 0, singletons: 0)
         var childCount = 0
         
@@ -371,12 +378,12 @@ class PPMLanguageModel: CustomStringConvertible
             result.nodes += childResult.nodes + 1
             result.leaves += childResult.leaves
             result.singletons += childResult.singletons
-            if listNodes[Int(currentIndex)].count == 1
+            if listNodes[currentIndex].count == 1
             {
                 result.singletons += 1
             }
 
-            currentIndex = listNodes[Int(currentIndex)].next
+            currentIndex = listNodes[currentIndex].next
             childCount += 1
         }
         if childCount == 0
@@ -407,7 +414,7 @@ class PPMLanguageModel: CustomStringConvertible
     //   2) Tokens not in the vocabulary are skipped over.
     //   3) Each character in the string is considered a token.
     // Returns number of skipped tokens.
-    func train(text: String) -> Int
+    mutating func train(text: String) -> Int
     {
         var skipped = 0
                     
@@ -434,7 +441,7 @@ class PPMLanguageModel: CustomStringConvertible
     // Trains on a set of strings.
     // Each element is trained on separately and assumed conditions on root context.
     // Returns number of skipped tokens.
-    func train(texts: [String]) -> Int
+    mutating func train(texts: [String]) -> Int
     {
         var skipped = 0
         for text in texts
@@ -450,7 +457,7 @@ class PPMLanguageModel: CustomStringConvertible
     // Skips over any characters not in the vocab.
     // There is no end of sentence symbol, so number of events is length of text.
     // Returns a tuple containing various stats about the evaluation.
-    func evaluate(text: String, updateModel: Bool = false) ->
+    mutating func evaluate(text: String, updateModel: Bool = false) ->
         (sumLogProb: Double, tokensGood: Int, tokensSkipped: Int, perplexity: Double)
     {
         let c = createContext()
@@ -484,7 +491,7 @@ class PPMLanguageModel: CustomStringConvertible
     }
     
     // Convience function that evaluates on a set of texts.
-    func evaluate(texts: [String], updateModel: Bool = false) ->
+    mutating func evaluate(texts: [String], updateModel: Bool = false) ->
         (sumLogProb: Double, tokensGood: Int, tokensSkipped: Int, perplexity: Double)
     {
         var sumLogProb = 0.0
@@ -504,18 +511,18 @@ class PPMLanguageModel: CustomStringConvertible
     // Finds child of the specified node with a specified symbol.
     // Returns the index of the Node object that matches the symbol.
     // If no match, returns Node.NULL.
-    private func findChildWith(nodeIndex: UInt32, symbol: Int) -> UInt32
+    private func findChildWith(nodeIndex: Int, symbol: Int) -> Int
     {
-        var currentIndex = listNodes[Int(nodeIndex)].child
+        var currentIndex = listNodes[nodeIndex].child
         // Loop until we hit the end of the linked list.
         while currentIndex != Node.NULL
         {
-            if (listNodes[Int(currentIndex)].symbol == symbol)
+            if (listNodes[currentIndex].symbol == symbol)
             {
                 // Found the desired symbol.
                 return currentIndex;
             }
-            currentIndex = listNodes[Int(currentIndex)].next
+            currentIndex = listNodes[currentIndex].next
         }
         return currentIndex;
     }
@@ -530,27 +537,28 @@ class PPMLanguageModel: CustomStringConvertible
     //   IEEE Transactions on Communications, vol. 38, no. 11, pp. 1917--1921.
     // This however will increase the memory use of the algorithm which is already
     // quite substantial.
-    private func totalChildrenCounts(nodeIndex: UInt32, exclusionMask: Set<Int>?) -> Int
+    private func totalChildrenCounts(nodeIndex: Int, exclusionMask: Set<Int>?) -> Int
     {
-        var currentIndex = listNodes[Int(nodeIndex)].child
+        var currentIndex = listNodes[nodeIndex].child
         var count = 0
         // Loop until we hit the end of the linked list.
         while currentIndex != Node.NULL
         {
             if let exclusionMaskUnwrapped = exclusionMask
             {
-                if !exclusionMaskUnwrapped.contains(listNodes[Int(currentIndex)].symbol)
+                if !exclusionMaskUnwrapped.contains(listNodes[currentIndex].symbol)
                 {
-                    count += listNodes[Int(currentIndex)].count
+                    count += listNodes[currentIndex].count
                 }
             }
             else
             {
                 // No exclusion mask specified, sum all the children
-                count += listNodes[Int(currentIndex)].count
+                count += listNodes[currentIndex].count
             }
-            currentIndex = listNodes[Int(currentIndex)].next
+            currentIndex = listNodes[currentIndex].next
         }
         return count;
     }
+
 }

@@ -14,6 +14,8 @@ let AAC_DEV_TEST = "\(PPMLM_HOME)/data/aac_dev_test.txt"
 // https://data.imagineville.org/daily_train.txt.gz
 let DAILY_DIALOG_TRAIN_FULL = "\(PPMLM_HOME)/data/daily_train.txt"
 
+print("sizeof Node \(MemoryLayout<Node>.size) stride \(MemoryLayout<Node>.stride)")
+
 // Create a small vocabulary.
 var v = Vocabulary()
 let aSymbol = v.add(token: "a")
@@ -261,7 +263,14 @@ print("*** Test \(test)"); test += 1
 lines = try Utils.readLinesFrom(filename: DAILY_DIALOG_TRAIN_FULL)
 startMem = Utils.memoryUsed()
 startTime = ProcessInfo.processInfo.systemUptime
-lm = PPMLanguageModel(vocab: v, maxOrder: 9)
+
+// Automatically grow the tree
+//lm = PPMLanguageModel(vocab: v, maxOrder: 9)
+// Size of the training tree
+//lm = PPMLanguageModel(vocab: v, maxOrder: 9, reserveCapacity: 2234348)
+// Size of the training + eval tree
+lm = PPMLanguageModel(vocab: v, maxOrder: 9, reserveCapacity: 2380791)
+
 skipped = lm.train(texts: lines)
 endTime = ProcessInfo.processInfo.systemUptime
 endMem = Utils.memoryUsed()
@@ -288,6 +297,7 @@ elapsed = endTime - startTime
 print("Eval time with update: \(String(format: "%.4f", elapsed))" +
       ", chars/second: \(String(format: "%.1f", (Double(evalChars) / elapsed)))")
 assert(abs(-78138.42692423137 - result.sumLogProb) < Constants.EPSILON, "Eval dev adaptive logprob didn't match!")
+print("Num nodes: \(lm.numNodes)")
 
 // *** Test 20, using pointers
 // Training lines 46427, chars 1752271, skipped chars 0, PPM nodes 2234348
@@ -308,7 +318,80 @@ assert(abs(-78138.42692423137 - result.sumLogProb) < Constants.EPSILON, "Eval de
 // Tree stats: (nodes: 2234348, leaves: 705995, singletons: 1742596)
 // (sumLogProb: -78138.42692423137, tokensGood: 156882, tokensSkipped: 0, perplexity: 3.1482653779731993)
 // Eval time with update: 10.8456, chars/second: 14465.1
+// On AC power:                 9.0055, 9.1733, 9.0110
+// After some cast fixes:       7.8796, 8.2732
+// Change to get/set scheme:    8.1169, 8.1877
 
+// *** Test 20, exact capacity for train model (but not eval)
+// Training lines 46427, chars 1752271, skipped chars 0, PPM nodes 2234348
+// Train time: 3.9304, chars/second: 445827.4
+// Memory increase in MB: 106.79
+// Estimated bytes per Node: 47.80
+// Num nodes: 2234348
+// Tree stats: (nodes: 2234348, leaves: 705995, singletons: 1742596)
+// (sumLogProb: -78138.42692423137, tokensGood: 156882, tokensSkipped: 0, perplexity: 3.1482653779731993)
+// Eval time with update: 8.9263, chars/second: 17575.3
+/*
+
+ *** Test 20, exact size of train + eval
+Training lines 46427, chars 1752271, skipped chars 0, PPM nodes 2234348
+Train time: 3.9790, chars/second: 440382.0
+Memory increase in MB: 88.90
+Estimated bytes per Node: 39.79
+Num nodes: 2234348
+Tree stats: (nodes: 2234348, leaves: 705995, singletons: 1742596)
+(sumLogProb: -78138.42692423137, tokensGood: 156882, tokensSkipped: 0, perplexity: 3.1482653779731993)
+Eval time with update: 7.9799, chars/second: 19659.7
+Num nodes: 2380791
+ 
+ *** Test 20, exact size train + eval, change Node, PPMLanguageModel, Vocabulary to structs
+ Training lines 46427, chars 1752271, skipped chars 0, PPM nodes 2234348
+ Train time: 2.6345, chars/second: 665132.1
+ Memory increase in MB: 71.50
+ Estimated bytes per Node: 32.00
+ Num nodes: 2234348
+ Tree stats: (nodes: 2234348, leaves: 705995, singletons: 1742596)
+ (sumLogProb: -78138.42692423137, tokensGood: 156882, tokensSkipped: 0, perplexity: 3.1482653779731993)
+ Eval time with update: 6.2513, chars/second: 25096.1
+ Num nodes: 2380791
+ 
+ *** Test 20, count to UInt32
+ 24 bytes per node
+ Training lines 46427, chars 1752271, skipped chars 0, PPM nodes 2234348
+ Train time: 2.6846, chars/second: 652719.9
+ Memory increase in MB: 53.62
+ Estimated bytes per Node: 24.00
+ Num nodes: 2234348
+ Tree stats: (nodes: 2234348, leaves: 705995, singletons: 1742596)
+ (sumLogProb: -78138.42692423137, tokensGood: 156882, tokensSkipped: 0, perplexity: 3.1482653779731993)
+ Eval time with update: 6.6608, chars/second: 23553.1
+ Num nodes: 2380791
+ 
+ *** Test 20, symbol to UInt8
+ 17 bytes per Node (probably aligned longer?)
+ Training lines 46427, chars 1752271, skipped chars 0, PPM nodes 2234348
+ Train time: 3.4954, chars/second: 501309.5
+ Memory increase in MB: 44.70
+ Estimated bytes per Node: 20.00
+ Num nodes: 2234348
+ Tree stats: (nodes: 2234348, leaves: 705995, singletons: 1742596)
+ (sumLogProb: -78138.42692423137, tokensGood: 156882, tokensSkipped: 0, perplexity: 3.1482653779731993)
+ Eval time with update: 8.1363, chars/second: 19281.7
+ Num nodes: 2380791
+
+ *** Test 20, symbol to UInt8
+ sizeof Node 20 stride 20
+ Training lines 46427, chars 1752271, skipped chars 0, PPM nodes 2234348
+ Train time: 3.2631, chars/second: 536996.1
+ Memory increase in MB: 44.70
+ Estimated bytes per Node: 20.00
+ Num nodes: 2234348
+ Tree stats: (nodes: 2234348, leaves: 705995, singletons: 1742596)
+ (sumLogProb: -78138.42692423137, tokensGood: 156882, tokensSkipped: 0, perplexity: 3.1482653779731993)
+ Eval time with update: 7.7999, chars/second: 20113.4
+ Num nodes: 2380791
+ 
+*/
 
 // Results training on full daily dialog training set.
 // Evaluating on AAC dev/test set from https://imagineville.org/software/lm/feb21_dasher/

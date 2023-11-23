@@ -3,7 +3,7 @@
 
 import Foundation
 
-class Utils
+struct Utils
 {
     // Determine if a reference to an object is not nil
     static func isObjectNotNil(object:AnyObject!) -> Bool

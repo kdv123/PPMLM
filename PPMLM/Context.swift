@@ -4,9 +4,9 @@
 class Context: CustomStringConvertible
 {
     var order: Int
-    var head: UInt32
+    var head: Int
 
-    init(order: Int, head: UInt32)
+    init(order: Int, head: Int)
     {
         self.order = order
         self.head = head

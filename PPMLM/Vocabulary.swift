@@ -3,7 +3,7 @@
 //   token  - A string token in the language model (often a single character)
 //   symbol - Numeric integer ID for a token
 
-class Vocabulary: CustomStringConvertible
+struct Vocabulary: CustomStringConvertible
 {
     // Use a dictionary to convert strings quickly to numeric IDs.
     // Start with a single entry for the root node.
@@ -14,7 +14,7 @@ class Vocabulary: CustomStringConvertible
     private var symbolToToken = [Constants.ROOT_SYMBOL: Constants.ROOT_TOKEN]
 
     // Adds token to the vocabulary and returns its unique numeric symbol ID
-    func add(token: String) -> Int
+    mutating func add(token: String) -> Int
     {
         if let symbol = tokenToSymbol[token]
         {
@@ -33,7 +33,7 @@ class Vocabulary: CustomStringConvertible
     
     // Add all the characters in a passed in string as a token in the vocab.
     // This allows clients to easily initialize a vocabulary with a single call.
-    func addAllCharacters(valid: String)
+    mutating func addAllCharacters(valid: String)
     {
         for ch in valid
         {

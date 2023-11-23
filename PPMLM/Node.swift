@@ -9,16 +9,41 @@
 //     Implementation Technique for Varied-Length N-gram Language Models",
 //     MSc. Thesis, Saarland University.
 
-class Node: CustomStringConvertible
+struct Node: CustomStringConvertible
 {
+    // Constant index value used to denote we aren't pointing anywhere.
     static let NULL = UInt32.max
     
     // Node containing the linked list that has symbols extending this node by one more symbol.
-    var child: UInt32 = Node.NULL
+    private var _child: UInt32 = Node.NULL
+    var child: Int
+    {
+        get 
+        {
+            return Int(_child)
+        }
+        set
+        {
+            assert(newValue <= UInt32.max, "Index exceeded maximum value!")
+            _child = UInt32(newValue)
+        }
+    }
     
     // Next node in the linked list for seen symbols after our current Node's context.
-    private(set) var next: UInt32 = Node.NULL
-
+    private var _next: UInt32 = Node.NULL
+    var next: Int
+    {
+        get
+        {
+            return Int(_next)
+        }
+        set
+        {
+            assert(newValue <= UInt32.max, "Index exceeded maximum value!")
+            _next = UInt32(newValue)
+        }
+    }
+    
     // Node in the backoff structure, also known as "vine" structure (see [1]
     // above) and "suffix link" (see [2] above). The backoff for the given node
     // points at the node representing the shorter context. For example, if the
@@ -29,14 +54,52 @@ class Node: CustomStringConvertible
     // need to be. For example, for the node "B" in the trie path for the string
     // "AB" ("[R] -> [A] -> [*B*]") the backoff points at the child node of a
     // different path "[R] -> [*B*]".
-    private(set) var backoff: UInt32 = Node.NULL
+    private var _backoff: UInt32 = Node.NULL
+    var backoff: Int
+    {
+        get
+        {
+            return Int(_backoff)
+        }
+        set
+        {
+            assert(newValue <= UInt32.max, "Index exceeded maximum value!")
+            _backoff = UInt32(newValue)
+        }
+    }
     
     // Frequency count for this node. Number of times the suffix symbol stored
     // in this node was observed.
-    private(set) var count: Int = 1
-
+    private var _count: UInt32 = 1
+    var count: Int
+    {
+        get
+        {
+            return Int(_count)
+        }
+        set
+        {
+            assert(newValue <= UInt32.max, "Count exceeded maximum value!")
+            _count = UInt32(newValue)
+        }
+    
+    }
+    
     // Symbol that this node stores.
-    private(set) var symbol: Int = Constants.ROOT_SYMBOL
+    private var _symbol: UInt32 = UInt32(Constants.ROOT_SYMBOL)
+    var symbol: Int
+    {
+        get
+        {
+            return Int(_symbol)
+        }
+        set
+        {
+            assert(newValue <= UInt32.max, "Symbol exceeded maximum value!")
+            _symbol = UInt32(newValue)
+        }
+    }
+
     
     // Constructor for the default root Node
     init()
@@ -44,7 +107,7 @@ class Node: CustomStringConvertible
     }
     
     // Contruct for a given symbol and possible pointers to other Nodes.
-    init(symbol: Int, next: UInt32, backoff: UInt32)
+    init(symbol: Int, next: Int, backoff: Int)
     {
         self.symbol = symbol
         self.next = next
@@ -52,7 +115,7 @@ class Node: CustomStringConvertible
     }
 
     // Add one to the count of this Node.
-    func incrementCount()
+    mutating func incrementCount()
     {
         count += 1
     }
