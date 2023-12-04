@@ -30,34 +30,8 @@ struct Utils
     {
         return pow(10, -1.0 * sumLog10Prob / Double(numEvents))
     }
-    
-    // Return memory used in bytes.
-    // https://stackoverflow.com/questions/40991912/how-to-get-memory-usage-of-my-application-and-system-in-swift-by-programatically
-    static func memoryUsed() -> Int
-    {
-        var taskInfo = mach_task_basic_info()
-        var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size)/4
-        let kerr: kern_return_t = withUnsafeMutablePointer(to: &taskInfo) 
-        {
-            $0.withMemoryRebound(to: integer_t.self, capacity: 1) 
-            {
-                task_info(mach_task_self_, task_flavor_t(MACH_TASK_BASIC_INFO), $0, &count)
-            }
-        }
 
-        if kerr == KERN_SUCCESS 
-        {
-            return Int(taskInfo.resident_size)
-        }
-        else 
-        {
-            print("Error with task_info(): " +
-                (String(cString: mach_error_string(kerr), encoding: String.Encoding.ascii) ?? "unknown error"))
-            return 0
-        }
-    }
-    
-    // Another solution from:
+    // Return memory in megabytes.
     // https://stackoverflow.com/questions/40991912/how-to-get-memory-usage-of-my-application-and-system-in-swift-by-programatically
     static func memoryInMB() -> Int
     {
@@ -81,31 +55,6 @@ struct Utils
         let usedBytes = Float(info.phys_footprint)
         let usedBytesInt: UInt64 = UInt64(usedBytes)
         return Int(usedBytesInt / 1024 / 1024)
-    }
-    
-    // https://stackoverflow.com/questions/71209362/how-to-check-system-memory-usage-with-swift
-    static func getMemoryUsedAndDeviceTotalInMegabytes() -> (Float, Float) {
-        
-        var used_megabytes: Float = 0
-        let total_bytes = Float(ProcessInfo.processInfo.physicalMemory)
-        let total_megabytes = total_bytes / 1024.0 / 1024.0
-        var info = mach_task_basic_info()
-        var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size)/4
-        let kerr: kern_return_t = withUnsafeMutablePointer(to: &info) {
-            $0.withMemoryRebound(to: integer_t.self, capacity: 1) {
-                task_info(
-                    mach_task_self_,
-                    task_flavor_t(MACH_TASK_BASIC_INFO),
-                    $0,
-                    &count
-                )
-            }
-        }
-        if kerr == KERN_SUCCESS {
-            let used_bytes: Float = Float(info.resident_size)
-            used_megabytes = used_bytes / 1024.0 / 1024.0
-        }
-        return (used_megabytes, total_megabytes)
     }
     
     // Read all the lines from a given filename.

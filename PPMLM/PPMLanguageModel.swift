@@ -55,56 +55,6 @@ struct PPMLanguageModel: CustomStringConvertible
     // Node containing the linked list that has symbols extending this node by one more symbol.
     private var childs = [NodeIndex]()
     
-    // Shrink our internal array capacity to the actual size (plus an optional extra amount).
-    // This doesn't seem to actually reduce reported memory?
-    mutating func shrink(extra: Int? = 0)
-    {
-        print("Shrink, old size \(symbols.count), old capacity \(symbols.capacity)")
-        var newCapacity = symbols.count
-        if let extra = extra
-        {
-            newCapacity += extra
-        }
-        print("Shrink, new capacity \(newCapacity)")
-        
-        var newSymbols = [Symbol]()
-        print("Shrink, newSymbols size \(newSymbols.count) capacity1 \(newSymbols.capacity)")
-        newSymbols.reserveCapacity(newCapacity)
-        print("Shrink, newSymbols size \(newSymbols.count) capacity2 \(newSymbols.capacity)")
-        newSymbols.append(contentsOf: symbols)
-        print("Shrink, newSymbols size \(newSymbols.count) capacity3 \(newSymbols.capacity)")
-        symbols.removeAll(keepingCapacity: false)
-        symbols.append(contentsOf: newSymbols)
-        print("Shrink, symbols size \(symbols.count) capacity3 \(symbols.capacity)")
-
-        var newCounts = [Count]()
-        newCounts.reserveCapacity(newCapacity)
-        newCounts.append(contentsOf: counts)
-        //counts.removeAll(keepingCapacity: false)
-        counts = newCounts
-
-        var newBackoffs = [NodeIndex]()
-        newBackoffs.reserveCapacity(newCapacity)
-        newBackoffs.append(contentsOf: backoffs)
-        //backoffs.removeAll(keepingCapacity: false)
-        backoffs = newBackoffs
-        
-        var newNexts = [NodeIndex]()
-        newNexts.reserveCapacity(newCapacity)
-        newNexts.append(contentsOf: nexts)
-        //nexts.removeAll(keepingCapacity: false)
-        nexts = newNexts
-        
-        var newChilds = [NodeIndex]()
-        newChilds.reserveCapacity(newCapacity)
-        newChilds.append(contentsOf: childs)
-        //childs.removeAll(keepingCapacity: false)
-        childs = newChilds
-        
-        print("Shrink, new size \(symbols.count), new capacity \(symbols.capacity) \(newSymbols.capacity)")
-
-    }
-    
     // Helper that increases the capacity of our parallel arrays.
     private mutating func extendArrays(reserveCapacity : Int)
     {
@@ -129,19 +79,15 @@ struct PPMLanguageModel: CustomStringConvertible
                 
         if let reserveCapacity = reserveCapacity
         {
-            //nodes.reserveCapacity(reserveCapacity)
             extendArrays(reserveCapacity: reserveCapacity)
         }
                 
         // First element in the array will be the root node.
-        //nodes.append(Node())
         symbols.append(Symbol(0))
         counts.append(Count(1))
         backoffs.append(PPMLanguageModel.NULL)
         nexts.append(PPMLanguageModel.NULL)
         childs.append(PPMLanguageModel.NULL)
-        
-       
         
         if let capacityIncrease = capacityIncrease
         {
@@ -160,7 +106,6 @@ struct PPMLanguageModel: CustomStringConvertible
             // Update the counts for the given node.  Only updates the counts for
             // the highest order already existing node for the symbol ('single
             // counting' or 'update exclusion').
-//            nodes[symbolIndex].incrementCount()
             counts[symbolIndex] += 1
             return symbolIndex
         }
@@ -173,23 +118,15 @@ struct PPMLanguageModel: CustomStringConvertible
             var backoffIndex: Int = 0  // Shortest possible context.
             if toNodeIndex != 0
             {
-//                let toNodeBackoffIndex = nodes[toNodeIndex].backoff
                 let toNodeBackoffIndex = backoffs[toNodeIndex]
                 backoffIndex = add(symbol: symbol, toNodeIndex: Int(toNodeBackoffIndex))
             }
             
             // Add a new node to our list.
-//            let symbolIndex = nodes.count
             let symbolIndex = childs.count
-//            listNodes.append(Node(symbol: symbol, next: listNodes[toNodeIndex].child, backoff: backoffIndex))
-//            nodes.append(Node(next: nodes[toNodeIndex].child, backoff: backoffIndex))
-//            nodes.append(Node(next: nodes[toNodeIndex].child))
-//            nodes.append(Node())
             childs.append(PPMLanguageModel.NULL)
-//            nexts.append(NodeIndex(nodes[toNodeIndex].child))
             nexts.append(NodeIndex(childs[toNodeIndex]))
             childs[toNodeIndex] = NodeIndex(symbolIndex)
-//            nodes[toNodeIndex].child = symbolIndex
             symbols.append(Symbol(symbol))
             counts.append(Count(1))
             backoffs.append(NodeIndex(backoffIndex))
@@ -197,10 +134,8 @@ struct PPMLanguageModel: CustomStringConvertible
             // If optional capacity increase is enabled check if we have reaced capacity.
             if capacityIncrease > 0 && childs.count == childs.capacity
             {
-                //print("Old size \(childs.count), old capacity \(childs.capacity)")
                 // Increase ourselves to avoid the standard doubling behavior.
                 extendArrays(reserveCapacity: childs.count + capacityIncrease)
-                //print("New size \(childs.count), new capacity \(childs.capacity)")
             }
             
             numNodes += 1
@@ -250,7 +185,6 @@ struct PPMLanguageModel: CustomStringConvertible
             }
             // Try to extend the shorter context.
             context.order -= 1
-//            let backoff = nodes[context.head].backoff
             let backoff = backoffs[context.head]
             if backoff != PPMLanguageModel.NULL
             {
@@ -282,10 +216,9 @@ struct PPMLanguageModel: CustomStringConvertible
         context.head = symbolNode
         context.order += 1
         
-        // TODO: Do we really need a loop here? Can't we only go over by 1?
-        while context.order > maxOrder
+        // Check if we have exceeded the model's max order.
+        if context.order > maxOrder
         {
-            //let backoff = nodes[context.head].backoff
             let backoff = backoffs[context.head]
             if backoff != PPMLanguageModel.NULL
             {
@@ -294,9 +227,10 @@ struct PPMLanguageModel: CustomStringConvertible
             }
             else
             {
-                assertionFailure("backoff was nil while shortening after add")
+                assertionFailure("backoff was nil shortening after add")
             }
         }
+        
     }
  
     // Returns probabilities for all the symbols in the vocabulary given the
@@ -369,15 +303,12 @@ struct PPMLanguageModel: CustomStringConvertible
             let count = Double(totalChildrenCounts(nodeIndex: nodeIndex, exclusionMask: exclusionMask))
             if count > 0
             {
-                //var childNodeIndex = nodes[nodeIndex].child
                 var childNodeIndex = Int(childs[nodeIndex])
                 while childNodeIndex != PPMLanguageModel.NULL
                 {
-                    //let symbol = listNodes[childNodeIndex].symbol
                     let symbol = symbols[childNodeIndex]
                     if !useExclusion || !exclusionMask.contains(symbol)
                     {
-//                        let p = gamma * (Double(nodes[childNodeIndex].count) - Constants.KN_BETA) / (Double(count) + Constants.KN_ALPHA)
                         let p = gamma * (Double(counts[childNodeIndex]) - Constants.KN_BETA) / (count + Constants.KN_ALPHA)
                         probs[Int(symbol)] += p
                         totalMass -= p
@@ -386,7 +317,6 @@ struct PPMLanguageModel: CustomStringConvertible
                             exclusionMask.insert(symbol)
                         }
                     }
-//                    childNodeIndex = nodes[childNodeIndex].next
                     childNodeIndex = Int(nexts[childNodeIndex])
                 }
             }
@@ -462,7 +392,7 @@ struct PPMLanguageModel: CustomStringConvertible
         assert(totalMass == 0.0, "Expected remaining probability mass to be zero!")
         assert(abs(1.0 - newProbMass) < Constants.EPSILON, "Leftover mass is too big!")
         
-        // All the cool kids sum to 1
+        // All the cool kids sum to 1.
         assert(abs(1.0 - probs.sum()) < Constants.EPSILON, "Probability distribution does not sum to 1.0!")
         
         return probs
@@ -494,14 +424,11 @@ struct PPMLanguageModel: CustomStringConvertible
         var result = 1
         print("\(indent)\(nodeIndex)")
         let indentMore = indent + "  "
-        
-        //var current = nodes[nodeIndex].child
         var current = Int(childs[nodeIndex])
         
         while current != PPMLanguageModel.NULL
         {
             result += printTree(nodeIndex: current, indent: indentMore)
-            //current = nodes[current].next
             current = Int(nexts[current])
         }
         return result
@@ -518,7 +445,6 @@ struct PPMLanguageModel: CustomStringConvertible
     // Helper that descends tree summing stats.
     private func statsTree(nodeIndex: Int) -> TreeStats
     {
-        //var currentIndex = nodes[nodeIndex].child
         var currentIndex = Int(childs[nodeIndex])
         var result = TreeStats()
         var childCount = 0
@@ -529,7 +455,6 @@ struct PPMLanguageModel: CustomStringConvertible
             result.nodes += childResult.nodes + 1
             result.leaves += childResult.leaves
             result.singletons += childResult.singletons
-//            let count = nodes[currentIndex].count
             let count = counts[currentIndex]
             if count == 1
             {
@@ -539,7 +464,6 @@ struct PPMLanguageModel: CustomStringConvertible
             {
                 result.maxCount = Int(count)
             }
-            //currentIndex = nodes[currentIndex].next
             currentIndex = Int(nexts[currentIndex])
             childCount += 1
         }
@@ -670,18 +594,15 @@ struct PPMLanguageModel: CustomStringConvertible
     // If no match, returns PPMLanguageModel.NULL.
     private func findChildWith(nodeIndex: Int, symbol: Symbol) -> Int
     {
-        //var currentIndex = nodes[nodeIndex].child
         var currentIndex = Int(childs[nodeIndex])
         // Loop until we hit the end of the linked list.
         while currentIndex != PPMLanguageModel.NULL
         {
-            //if (listNodes[currentIndex].symbol == symbol)
             if (symbols[currentIndex] == symbol)
             {
                 // Found the desired symbol.
                 return currentIndex;
             }
-            //currentIndex = nodes[currentIndex].next
             currentIndex = Int(nexts[currentIndex])
         }
         return currentIndex;
@@ -699,7 +620,6 @@ struct PPMLanguageModel: CustomStringConvertible
     // quite substantial.
     private func totalChildrenCounts(nodeIndex: Int, exclusionMask: Set<Symbol>?) -> Int
     {
-        //var currentIndex = nodes[nodeIndex].child
         var currentIndex = Int(childs[nodeIndex])
         var count = 0
         // Loop until we hit the end of the linked list.
@@ -707,20 +627,16 @@ struct PPMLanguageModel: CustomStringConvertible
         {
             if let exclusionMaskUnwrapped = exclusionMask
             {
-                //if !exclusionMaskUnwrapped.contains(listNodes[currentIndex].symbol)
                 if !exclusionMaskUnwrapped.contains(symbols[currentIndex])
                 {
-                    //count += nodes[currentIndex].count
                     count += Int(counts[currentIndex])
                 }
             }
             else
             {
                 // No exclusion mask specified, sum all the children
-                //count += nodes[currentIndex].count
                 count += Int(counts[currentIndex])
             }
-            //currentIndex = nodes[currentIndex].next
             currentIndex = Int(nexts[currentIndex])
         }
         return count;

@@ -10,7 +10,6 @@
 		2B051D852B0EE85500059C6B /* TreeStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B051D842B0EE85500059C6B /* TreeStats.swift */; };
 		2B9EF4C72AFFDC9300C960CC /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B9EF4C62AFFDC9300C960CC /* main.swift */; };
 		2B9EF4CE2AFFEE7000C960CC /* Context.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B9EF4CD2AFFEE7000C960CC /* Context.swift */; };
-		2B9EF4D02AFFF57F00C960CC /* Node.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B9EF4CF2AFFF57F00C960CC /* Node.swift */; };
 		2B9EF4D22AFFF5A700C960CC /* PPMLanguageModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B9EF4D12AFFF5A700C960CC /* PPMLanguageModel.swift */; };
 		2B9EF4D42AFFF6D500C960CC /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B9EF4D32AFFF6D500C960CC /* Constants.swift */; };
 		2B9EF4D62AFFF9DB00C960CC /* Vocabulary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B9EF4D52AFFF9DB00C960CC /* Vocabulary.swift */; };
@@ -34,7 +33,6 @@
 		2B9EF4C32AFFDC9300C960CC /* PPMLM */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = PPMLM; sourceTree = BUILT_PRODUCTS_DIR; };
 		2B9EF4C62AFFDC9300C960CC /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		2B9EF4CD2AFFEE7000C960CC /* Context.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Context.swift; sourceTree = "<group>"; };
-		2B9EF4CF2AFFF57F00C960CC /* Node.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Node.swift; sourceTree = "<group>"; };
 		2B9EF4D12AFFF5A700C960CC /* PPMLanguageModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPMLanguageModel.swift; sourceTree = "<group>"; };
 		2B9EF4D32AFFF6D500C960CC /* Constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
 		2B9EF4D52AFFF9DB00C960CC /* Vocabulary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Vocabulary.swift; sourceTree = "<group>"; };
@@ -74,7 +72,6 @@
 				2B051D842B0EE85500059C6B /* TreeStats.swift */,
 				2B9EF4C62AFFDC9300C960CC /* main.swift */,
 				2B9EF4CD2AFFEE7000C960CC /* Context.swift */,
-				2B9EF4CF2AFFF57F00C960CC /* Node.swift */,
 				2B9EF4D12AFFF5A700C960CC /* PPMLanguageModel.swift */,
 				2B9EF4D32AFFF6D500C960CC /* Constants.swift */,
 				2B9EF4D52AFFF9DB00C960CC /* Vocabulary.swift */,
@@ -144,7 +141,6 @@
 				2B9EF4D42AFFF6D500C960CC /* Constants.swift in Sources */,
 				2B051D852B0EE85500059C6B /* TreeStats.swift in Sources */,
 				2B9EF4D22AFFF5A700C960CC /* PPMLanguageModel.swift in Sources */,
-				2B9EF4D02AFFF57F00C960CC /* Node.swift in Sources */,
 				2B9EF4D82B0143A200C960CC /* Utils.swift in Sources */,
 				2B9EF4CE2AFFEE7000C960CC /* Context.swift in Sources */,
 				2B9EF4C72AFFDC9300C960CC /* main.swift in Sources */,
