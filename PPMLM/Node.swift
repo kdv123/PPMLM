@@ -35,6 +35,7 @@ struct Node: CustomStringConvertible
         }
     }
     
+    /*
     // Index of next node in the linked list for seen symbols after our current Node's context.
     private var _next: UInt32 = Node.NULL
     var next: Int
@@ -49,6 +50,7 @@ struct Node: CustomStringConvertible
             _next = UInt32(newValue)
         }
     }
+    */
     
     // Node in the backoff structure, also known as "vine" structure (see [1]
     // above) and "suffix link" (see [2] above). The backoff for the given node
@@ -60,6 +62,7 @@ struct Node: CustomStringConvertible
     // need to be. For example, for the node "B" in the trie path for the string
     // "AB" ("[R] -> [A] -> [*B*]") the backoff points at the child node of a
     // different path "[R] -> [*B*]".
+/*
     private var _backoff: UInt32 = Node.NULL
     var backoff: Int
     {
@@ -73,10 +76,11 @@ struct Node: CustomStringConvertible
             _backoff = UInt32(newValue)
         }
     }
-    
+*/
+    /*
     // Frequency count for this node. Number of times the suffix symbol stored
     // in this node was observed.
-    private var _count: UInt16 = 1
+    private var _count: UInt32 = 1
     var count: Int
     {
         get
@@ -85,12 +89,13 @@ struct Node: CustomStringConvertible
         }
         set
         {
-            assert(newValue <= UInt16.max, "Count exceeded maximum value!")
-            _count = UInt16(newValue)
+            assert(newValue <= UInt32.max, "Count exceeded maximum value!")
+            _count = UInt32(newValue)
         }
     
     }
-    
+    */
+    /*
     // Symbol that this node stores.
     private var _symbol: UInt16 = UInt16(Constants.ROOT_SYMBOL)
     var symbol: Int
@@ -105,34 +110,54 @@ struct Node: CustomStringConvertible
             _symbol = UInt16(newValue)
         }
     }
+
+     // Contruct for a given symbol and possible pointers to other Nodes.
+     init(symbol: Int, next: Int, backoff: Int)
+     {
+         self.symbol = symbol
+         self.next = next
+         self.backoff = backoff
+     }
+
+     */
     
     // Constructor for the default root Node
     init()
     {
     }
-    
+
+    /*
     // Contruct for a given symbol and possible pointers to other Nodes.
-    init(symbol: Int, next: Int, backoff: Int)
+    init(next: Int)
     {
-        self.symbol = symbol
+        self.next = next
+    }
+    */
+    
+/*
+    // Contruct for a given symbol and possible pointers to other Nodes.
+    init(next: Int, backoff: Int)
+    {
         self.next = next
         self.backoff = backoff
     }
-
+*/
+/*
     // Add one to the count of this Node.
     mutating func incrementCount()
     {
         count += 1
     }
-    
+*/
     // Provide a friendly string version of this instance.
     var description: String
     {
-        return "(Node symbol \(symbol) " +
-        "count \(count) " +
+//        return "(Node symbol \(symbol) " +
+        return "(Node " +
+//        "count \(count) " +
         "child \(child) " +
-        "next \(next) " +
-        "backoff \(backoff) " +
+//        "next \(next) " +
+//        "backoff \(backoff) " +
         ")"
     }
 }

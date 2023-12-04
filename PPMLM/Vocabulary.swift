@@ -7,14 +7,14 @@ struct Vocabulary: CustomStringConvertible
 {
     // Use a dictionary to convert strings quickly to numeric IDs.
     // Start with a single entry for the root node.
-    private var tokenToSymbol = [Constants.ROOT_TOKEN: Constants.ROOT_SYMBOL]
+    private var tokenToSymbol = [Constants.ROOT_TOKEN: PPMLanguageModel.Symbol(Constants.ROOT_SYMBOL)]
 
     // For debug reasons, we may want to go the other way.
     // So let's keep the inverse dictionary as well.
-    private var symbolToToken = [Constants.ROOT_SYMBOL: Constants.ROOT_TOKEN]
+    private var symbolToToken = [PPMLanguageModel.Symbol(Constants.ROOT_SYMBOL): Constants.ROOT_TOKEN]
 
     // Adds token to the vocabulary and returns its unique numeric symbol ID
-    mutating func add(token: String) -> Int
+    mutating func add(token: String) -> PPMLanguageModel.Symbol
     {
         if let symbol = tokenToSymbol[token]
         {
@@ -24,7 +24,8 @@ struct Vocabulary: CustomStringConvertible
         else
         {
             // Add to dictionary with ID based on current size of vocab.
-            let result: Int = tokenToSymbol.count
+            assert(tokenToSymbol.count < PPMLanguageModel.Symbol.max, "Hit limit of size of vocab data type!")
+            let result = PPMLanguageModel.Symbol(tokenToSymbol.count)
             tokenToSymbol[token] = result
             symbolToToken[result] = token
             return result
@@ -43,13 +44,13 @@ struct Vocabulary: CustomStringConvertible
     
     // Look up the numeric token ID of a given token.
     // Will return nil if the token isn't in the vocabulary.
-    func getSymbol(ofToken: String) -> Int?
+    func getSymbol(ofToken: String) -> PPMLanguageModel.Symbol?
     {
         return tokenToSymbol[ofToken]
     }
     
     // Lookup the token string for a given numeric symbol ID.
-    func getToken(ofSymbol: Int) -> String?
+    func getToken(ofSymbol: PPMLanguageModel.Symbol) -> String?
     {
         return symbolToToken[ofSymbol]
     }

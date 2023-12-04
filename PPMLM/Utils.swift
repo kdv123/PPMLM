@@ -57,6 +57,57 @@ struct Utils
         }
     }
     
+    // Another solution from:
+    // https://stackoverflow.com/questions/40991912/how-to-get-memory-usage-of-my-application-and-system-in-swift-by-programatically
+    static func memoryInMB() -> Int
+    {
+        // The `TASK_VM_INFO_COUNT` and `TASK_VM_INFO_REV1_COUNT` macros are too
+        // complex for the Swift C importer, so we have to define them ourselves.
+        let TASK_VM_INFO_COUNT = mach_msg_type_number_t(MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<integer_t>.size)
+        guard let offset = MemoryLayout.offset(of: \task_vm_info_data_t.min_address) else {return 0}
+        let TASK_VM_INFO_REV1_COUNT = mach_msg_type_number_t(offset / MemoryLayout<integer_t>.size)
+        var info = task_vm_info_data_t()
+        var count = TASK_VM_INFO_COUNT
+        let kr = withUnsafeMutablePointer(to: &info) { infoPtr in
+            infoPtr.withMemoryRebound(to: integer_t.self, capacity: Int(count)) { intPtr in
+                task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), intPtr, &count)
+            }
+        }
+        guard
+            kr == KERN_SUCCESS,
+            count >= TASK_VM_INFO_REV1_COUNT
+        else { return 0 }
+        
+        let usedBytes = Float(info.phys_footprint)
+        let usedBytesInt: UInt64 = UInt64(usedBytes)
+        return Int(usedBytesInt / 1024 / 1024)
+    }
+    
+    // https://stackoverflow.com/questions/71209362/how-to-check-system-memory-usage-with-swift
+    static func getMemoryUsedAndDeviceTotalInMegabytes() -> (Float, Float) {
+        
+        var used_megabytes: Float = 0
+        let total_bytes = Float(ProcessInfo.processInfo.physicalMemory)
+        let total_megabytes = total_bytes / 1024.0 / 1024.0
+        var info = mach_task_basic_info()
+        var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size)/4
+        let kerr: kern_return_t = withUnsafeMutablePointer(to: &info) {
+            $0.withMemoryRebound(to: integer_t.self, capacity: 1) {
+                task_info(
+                    mach_task_self_,
+                    task_flavor_t(MACH_TASK_BASIC_INFO),
+                    $0,
+                    &count
+                )
+            }
+        }
+        if kerr == KERN_SUCCESS {
+            let used_bytes: Float = Float(info.resident_size)
+            used_megabytes = used_bytes / 1024.0 / 1024.0
+        }
+        return (used_megabytes, total_megabytes)
+    }
+    
     // Read all the lines from a given filename.
     // Returns a list of all the lines.
     static func readLinesFrom(filename: String) throws -> [String]
